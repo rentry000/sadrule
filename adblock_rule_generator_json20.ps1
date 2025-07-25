@@ -1195,19 +1195,7 @@ $urlList = @(
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
 
 )
-# Title: AdBlock_Rule_For_Sing-box
-# Description: 适用于Sing-box的域名拦截规则集，每20分钟更新一次，确保即时同步上游减少误杀
-# Homepage: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box
-# LICENSE1: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-GPL 3.0
-# LICENSE2: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-CC-BY-NC-SA 4.0
 
-
-# 定义广告过滤器URL列表
-$urlList = @(
-
-"https://gh-proxy.com/https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
-
-)
 
 # 日志文件路径
 $logFilePath = "$PSScriptRoot/adblock_log.txt"
