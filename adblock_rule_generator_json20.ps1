@@ -1195,34 +1195,45 @@ $urlList = @(
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
 
 )
+# Title: AdBlock_Rule_For_Sing-box
+# Description: 适用于Sing-box的域名拦截规则集，每20分钟更新一次，确保即时同步上游减少误杀
+# Homepage: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box
+# LICENSE1: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-GPL 3.0
+# LICENSE2: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-CC-BY-NC-SA 4.0
+
+
+# 定义广告过滤器URL列表
+$urlList = @(
+
+"https://gh-proxy.com/https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
+
+)
 
 # 日志文件路径
 $logFilePath = "$PSScriptRoot/adblock_log.txt"
 
 # 创建两个HashSet来存储唯一的规则和排除的域名
 $uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
-$excludedDomains = [System.Collections.Generic.HashSet[string]]::new()
+$n = "1.12.12.12/13"
+$uniqueRules.add($n)
+
+if ($uniqueRules -ne $null) {
+    $uniqueRules.ToString()
+}
+else {
+    Write-Host "Variable is null, cannot call method."
+}
+
+$global:excludedDomains = [System.Collections.Generic.HashSet[string]]::new()
 
 # 创建WebClient对象用于下载规则
 $webClient = New-Object System.Net.WebClient
 $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 
 # DNS规范验证函数
-function Is-ValidDNSDomain($domain) {
-    if ($domain.Length -gt 253) { return $false }
-    $labels = $domain -split "\."
-    foreach ($label in $labels) {
-        if ($label.Length -eq 0 -or $label.Length -gt 63) { return $false }
-        if ($label -notmatch "^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$") {
-            
-            return $false
-        }
-    }
-    $tld = $labels[-1]
-    if ($tld -notmatch "^[a-zA-Z]{2,}$") { return $false }
-    return $true
-}
+
 $number = 255
+$num = 1
 foreach ($url in $urlList) {
     Write-Host "正在处理: $url"
     Add-Content -Path $logFilePath -Value "正在处理: $url"
@@ -1231,46 +1242,55 @@ foreach ($url in $urlList) {
         $content = $webClient.DownloadString($url)
         $lines = $content -split "`n"
         
-        foreach ($line in $lines) {
-            # 直接处理以 @@ 开头的规则，提取域名并加入白名单
-             # Write-Host "$line"
-            if ($line.StartsWith('@@')) {
-                $domains = $line -replace '^@@', '' -split '[^\w.-]+'
-                foreach ($domain in $domains) {
-                    if (-not [string]::IsNullOrWhiteSpace($domain) -and $domain -match '[\w-]+(\.[[\w-]+)+') {
-                        $excludedDomains.Add($domain.Trim()) | Out-Null
+        
+
+
+
+        $lines | Foreach-Object -ThrottleLimit 16 -Parallel {
+            param($using:uniqueRules)
+           
+                # 直接处理以 @@ 开头的规则，提取域名并加入白名单
+                # Write-Host "$line"
+                if ($_.StartsWith('@@')) {
+                    $domains = $_ -replace '^@@', '' -split '[^\w.-]+'
+                    foreach ($domain in $domains) {
+                        if (-not [string]::IsNullOrWhiteSpace($domain) -and $domain -match '[\w-]+(\.[[\w-]+)+') {
+                            $excludedDomains.Add($domain.Trim()) | Out-Null
+                        }
                     }
                 }
-            }
-            else {
-                # 匹配 Adblock/Easylist 格式的规则
-               
-                # 处理ipv4
-                if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$') {
+                else {
+                   
+                        
+                  
+                    if ($_ -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$'-and ($_.Trim() -notmatch '^#')-and ($_.Trim() -notmatch '/')) {
                     
-                    $domain = $Matches[0]  + "/" + $number
-                    #Write-Host "$domain"
-                    $uniqueRules.Add($domain) | Out-Null
-                }
-                # 处理IPv6
-                elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$') {
-                    $domain = $Matches[0]  + "/" + $number
-                    $uniqueRules.Add($domain) | Out-Null
-                }
-                # 处理CIDR
-                elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$') {
-                    
-                    $domain = $Matches[0] 
-                    #Write-Host "$domain"
-                    $uniqueRules.Add($domain) | Out-Null
-                }
-                # 处理CIDR
-                elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$') {
-                    $domain = $Matches[0]
-                    $uniqueRules.Add($domain) | Out-Null
-                }
+                        $domain = $_ + "/" + "255"
+                        #Write-Host "这是: $domain"
+                       ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理IPv6
+                    elseif ($_ -match '\s*([0-9a-fA-F:]+)+\s*$'-and ($_.Trim() -notmatch '^#')-and ($_.Trim() -notmatch '/')) {
+                        $domain = $_ + "/" + "255"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理CIDR
+                    elseif ($_ -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$'-and ($_.Trim() -notmatch '^#')) {
+                        $domain = $_
+                        #Write-Host "这是: $domain"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理CIDR
+                    elseif ($_ -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$'-and ($_.Trim() -notmatch '^#')) {
+                        $domain = $_
+                       ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+            
+               }
+                  
             }
-        }
+        
+       
     }
     catch {
         Write-Host "处理 $url 时出错: $_"
@@ -1316,7 +1336,7 @@ $jsonContent = @{
 $jsonFormatted = $jsonContent | ConvertTo-Json -Depth 10 | ForEach-Object { $_.Trim() }
 
 # 定义输出文件路径
-$outputPath = "$PSScriptRoot/adblock_reject20.json"
+$outputPath = "$PSScriptRoot/adblock_reject19.json"
 $jsonFormatted | Out-File -FilePath $outputPath -Encoding utf8
 
 # 输出生成的有效规则总数
