@@ -3,7 +3,7 @@
 # Homepage: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box
 # LICENSE1: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-GPL 3.0
 # LICENSE2: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-CC-BY-NC-SA 4.0
-
+Import-Module ThreadJob
 
 # 定义广告过滤器URL列表
 $urlList = @(
@@ -1196,12 +1196,13 @@ $urlList = @(
 
 )
 
-
-# 日志文件路径
-$logFilePath = "$PSScriptRoot/adblock_log.txt"
+# 初始化线程安全的集合，用于存储所有 CIDR（PowerShell 7+ 支持）
+$uniqueRules = [System.Collections.Concurrent.ConcurrentBag[string]]::new()
 
 # 创建两个HashSet来存储唯一的规则和排除的域名
-$uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
+#$uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
+$global:excludedDomains = [System.Collections.Generic.HashSet[string]]::new()
+
 $n = "1.12.12.12/13"
 $uniqueRules.add($n)
 
@@ -1211,87 +1212,83 @@ if ($uniqueRules -ne $null) {
 else {
     Write-Host "Variable is null, cannot call method."
 }
-
-$global:excludedDomains = [System.Collections.Generic.HashSet[string]]::new()
-
-# 创建WebClient对象用于下载规则
-$webClient = New-Object System.Net.WebClient
-$webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-
 # DNS规范验证函数
-
 $number = 255
 $num = 1
-foreach ($url in $urlList) {
-    Write-Host "正在处理: $url"
-    Add-Content -Path $logFilePath -Value "正在处理: $url"
+$scriptBlock2 = {
+    param($url)
+
+    Write-Host "IPv4: $url"
     try {
-        # 读取并拆分内容为行
+        # 读取并拆分内容为行$_.Trim() -notmatch '^#'
+        
+        # 创建WebClient对象用于下载规则
+        $webClient = New-Object System.Net.WebClient
+        $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+
         $content = $webClient.DownloadString($url)
         $lines = $content -split "`n"
-        
-        
-
-
-
-        $lines | Foreach-Object -ThrottleLimit 16 -Parallel {
-            param($using:uniqueRules)
-           
-                # 直接处理以 @@ 开头的规则，提取域名并加入白名单
-                # Write-Host "$line"
-                if ($_.StartsWith('@@')) {
-                    $domains = $_ -replace '^@@', '' -split '[^\w.-]+'
-                    foreach ($domain in $domains) {
-                        if (-not [string]::IsNullOrWhiteSpace($domain) -and $domain -match '[\w-]+(\.[[\w-]+)+') {
-                            $excludedDomains.Add($domain.Trim()) | Out-Null
-                        }
-                    }
+        #Write-Host "IPv4: $lines"
+        #Write-Host "$lines"
+         foreach ($line in $lines) {
+            if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
+                    Write-Host "IPv4: $line"
+                    $domain = $Matches[0]  + "/" + "255"
+                    # Write-Host "$domain"
+                    ($using:uniqueRules).Add($domain) | Out-Null
                 }
-                else {
-                   
-                        
-                  
-                    if ($_ -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$'-and ($_.Trim() -notmatch '^#')-and ($_.Trim() -notmatch '/')) {
-                    
-                        $domain = $_ + "/" + "255"
-                        #Write-Host "这是: $domain"
-                       ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理IPv6
-                    elseif ($_ -match '\s*([0-9a-fA-F:]+)+\s*$'-and ($_.Trim() -notmatch '^#')-and ($_.Trim() -notmatch '/')) {
-                        $domain = $_ + "/" + "255"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理CIDR
-                    elseif ($_ -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$'-and ($_.Trim() -notmatch '^#')) {
-                        $domain = $_
-                        #Write-Host "这是: $domain"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理CIDR
-                    elseif ($_ -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$'-and ($_.Trim() -notmatch '^#')) {
-                        $domain = $_
-                       ($using:uniqueRules).Add($domain) | Out-Null
-                    }
+                # 处理IPv6
+                
+                elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$'-and ($line.Trim() -notmatch '^#')-and ($line -notmatch '/') ) {
+                    $domain = $Matches[0]  + "/" + "255"
+                    Write-Host "IPv4: $line"
+                    ($using:uniqueRules).Add($domain) | Out-Null
+                }
+                # 处理CIDR
+                elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
+                    #Write-Host "IPv4cidr: $line"
+                    $domain = $Matches[0] 
+                    #Write-Host "$domain"
+                    ($using:uniqueRules).Add($domain) | Out-Null
+                }
+                # 处理CIDR
+                elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
+                
+                   # Write-Host "IPv6cidr: $line"
+                    $domain = $Matches[0]
+                    ($using:uniqueRules).Add($domain) | Out-Null
+                }
             
-               }
-                  
-            }
-        
-       
+        }
     }
+    
     catch {
-        Write-Host "处理 $url 时出错: $_"
-        Add-Content -Path $logFilePath -Value "处理 $url 时出错: $_"
+        Write-Host "处理 $urls 时出错: $_"
+        #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
     }
-}
+    Start-Sleep -Seconds 1
+} -ThrottleLimit 16
 
+$jobs2 = foreach ($url in $urlList) {
+   
+            Start-ThreadJob -ScriptBlock $scriptBlock2 -ArgumentList $url 
+            
+    
+
+        # 等待所有线程任务执行完成
+        
+}
+Wait-Job -Job $jobs2
+        foreach ($job in $jobs2) {
+            Receive-Job -Job $job
+        }
+    
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
 $validExcludedDomains = [System.Collections.Generic.HashSet[string]]::new()
 
-foreach ($domain in $uniqueRules) {
-     $validRules.Add($domain) | Out-Null
+foreach ($domain in ($uniqueRules)) {
+    $validRules.Add($domain) | Out-Null
    
 }
 
@@ -1313,9 +1310,9 @@ $sortedDomains = $finalRules | Sort-Object
 # 将规则格式化为JSON格式
 $jsonContent = @{
     version = 1  # 设置 version 为 1
-    rules = @(
+    rules   = @(
         @{
-            ip_cidr= $sortedDomains
+            ip_cidr = $sortedDomains
         }
     )
 }
@@ -1324,11 +1321,11 @@ $jsonContent = @{
 $jsonFormatted = $jsonContent | ConvertTo-Json -Depth 10 | ForEach-Object { $_.Trim() }
 
 # 定义输出文件路径
-$outputPath = "$PSScriptRoot/adblock_reject19.json"
+$outputPath = "$PSScriptRoot/adblock_reject20.json"
 $jsonFormatted | Out-File -FilePath $outputPath -Encoding utf8
 
 # 输出生成的有效规则总数
 Write-Host "生成的有效规则总数: $ruleCount"
-Add-Content -Path $logFilePath -Value "Total entries: $ruleCount"
+#Add-Content -Path $logFilePath -Value "Total entries: $ruleCount"
 
 Pause
