@@ -1267,7 +1267,7 @@ $scriptBlock2 = {
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
     }
     Start-Sleep -Seconds 1
-} -ThrottleLimit 16
+} 
 
 $jobs2 = foreach ($url in $urlList) {
    
