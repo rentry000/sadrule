@@ -1219,7 +1219,7 @@ $scriptBlock2 = {
     param($url)
 
     Write-Host "IPv4: $url"
-    [System.Threading.Monitor]::Enter($using:lockObj)
+    [System.Threading.Monitor]::Enter($using:uniqueRules)
     try{
         # 读取并拆分内容为行$_.Trim() -notmatch '^#'
         
@@ -1267,7 +1267,7 @@ $scriptBlock2 = {
         Write-Host "处理 $urls 时出错: $_"
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
     }finally {
-        [System.Threading.Monitor]::Exit($using:lockObj)
+        [System.Threading.Monitor]::Exit($using:uniqueRules)
     Start-Sleep -Seconds 1
 }
 
@@ -1284,7 +1284,7 @@ Wait-Job -Job $jobs2
         foreach ($job in $jobs2) {
             Receive-Job -Job $job
         }
-        }
+}
     
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
