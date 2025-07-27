@@ -1196,8 +1196,9 @@ $urlList = @(
 
 )
 
+
 # 初始化线程安全的集合，用于存储所有 CIDR（PowerShell 7+ 支持）
-$uniqueRules = [System.Collections.Concurrent.ConcurrentBag[string]]::new()
+$uniqueRules = [System.Collections.Concurrent.ConcurrentBag[object]]::new()
 
 # 创建两个HashSet来存储唯一的规则和排除的域名
 #$uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
@@ -1212,68 +1213,128 @@ if ($uniqueRules -ne $null) {
 else {
     Write-Host "Variable is null, cannot call method."
 }
-# DNS规范验证函数
-$number = 255
-$num = 1
+# 创建临时目录
+
+$chunkSize = 3000
+# 函数1：拆分大文件为多个块
+
 $scriptBlock2 = {
     param($url)
 
     Write-Host "IPv4: $url"
-    [System.Threading.Monitor]::Enter($using:uniqueRules)
+    try {
+            # 获取原始文件名
+            $response = Invoke-WebRequest -Uri $Url -Method Head
+    
+            # 方法1：从响应头获取文件名
+            if ($response.Headers['Content-Disposition']) {
+                $fileName = ($response.Headers['Content-Disposition'] -split 'filename=')[1].Trim('"')
+            }
+            # 方法2：从URL路径获取文件名
+            else {
+                $fileName = $Url.Split('/')[-1]
+            }
+
+            # 清理非法字符
+            $fileName = $fileName -replace '[\\/:*?"<>|]', '_'
+            # 临时工作目录
+            $tempDir = "$env:TEMP\cidr_$(Get-Date -Format yyyyMMddHH)"
+            # 修改文件后缀名
+            $fileName = [System.IO.Path]::GetFileNameWithoutExtension($fileName) + ".txt"
+            # 检查路径是否存在
+            if (-not (Test-Path $tempDir)) {
+                # 自动创建路径（包括所有父目录）
+                New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
+            }
+            # 完整保存路径
+            $fullPath = Join-Path $tempDir $fileName
+
+            # 下载文件
+            Invoke-WebRequest -Uri $Url -OutFile $fullPath
+            
+            Get-Content $fullPath -ReadCount 1000 | 
+            ForEach-Object { $_ | Where { $_.Trim() -ne '' } } | 
+            Add-Content $fullPath
+            # 显示结果
+            Write-Host "下载完成！" -ForegroundColor Green
+            Write-Host "保存路径: $fullPath" 
+        }
+        catch {
+            Write-Host "下载失败: $_" -ForegroundColor Red
+        }
     try{
         # 读取并拆分内容为行$_.Trim() -notmatch '^#'
-        
         # 创建WebClient对象用于下载规则
-        $webClient = New-Object System.Net.WebClient
-        $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-
-        $content = $webClient.DownloadString($url)
-        $lines = $content -split "`n"
-        #Write-Host "IPv4: $lines"
-        #Write-Host "$lines"
-         foreach ($line in $lines) {
-            if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
-                    Write-Host "IPv4: $line"
-                    $domain = $Matches[0]  + "/" + "255"
-                    # Write-Host "$domain"
-                    ($using:uniqueRules).Add($domain) | Out-Null
+        # $webClient = New-Object System.Net.WebClient
+        # $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+        # # 临时工作目录
+        # $tempDir = "$env:TEMP\cidr_$(Get-Date -Format yyyyMMddHHmmss)"
+        # $fileName = $Url.Split('/')[-1]
+        # if($tempDir -eq $null){New-Item -ItemType Directory $tempDir | Out-Null}
+        # $fullPath = Join-Path $tempDir $fileName
+        # Write-Host "路径: $fullPath"
+        # Invoke-WebRequest -Uri $Url -Method Head
+        # $webClient.DownloadString($url, $fullPath)    
+        # $reader = [System.IO.StreamReader]::new($fullPath) 
+        $reader = [System.IO.File]::OpenText($fullPath)
+            while (!$reader.EndOfStream) {
+                $chunk = foreach ($i in 1..$chunkSize) {
+                if ($reader.EndOfStream) { break}
+                    $line = $reader.ReadLine().Trim()
+                    ifif ($line -eq $null) { break }
+                    if ($line -eq $null) { break }
+                    $line.Trim()
+                    # Write-Host $line
                 }
-                # 处理IPv6
+                if (-not $chunk) { break }
+                 
                 
-                elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$'-and ($line.Trim() -notmatch '^#')-and ($line -notmatch '/') ) {
-                    $domain = $Matches[0]  + "/" + "255"
-                    Write-Host "IPv4: $line"
-                    ($using:uniqueRules).Add($domain) | Out-Null
-                }
-                # 处理CIDR
-                elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
-                    #Write-Host "IPv4cidr: $line"
-                    $domain = $Matches[0] 
-                    #Write-Host "$domain"
-                    ($using:uniqueRules).Add($domain) | Out-Null
-                }
-                # 处理CIDR
-                elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
+                $lines = $chunk
+                # Write-Host "IPv6: $lines"
+                #Write-Host "$lines"
+                foreach ($line in $lines) {
+                    if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
+                        # Write-Host "IPv4: $line"
+                        $domain = $Matches[0] + "/" + "255"
+                        # Write-Host "$domain"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理IPv6
                 
-                   # Write-Host "IPv6cidr: $line"
-                    $domain = $Matches[0]
-                    ($using:uniqueRules).Add($domain) | Out-Null
-                }
+                    elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/') ) {
+                        $domain = $Matches[0] + "/" + "255"
+                        # Write-Host "IPv4: $line"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理CIDR
+                    elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
+                        #Write-Host "IPv4cidr: $line"
+                        $domain = $Matches[0] 
+                        #Write-Host "$domain"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理CIDR
+                    elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
+                
+                        # Write-Host "IPv6cidr: $line"
+                        $domain = $Matches[0]
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
             
-        }
+                }
+            }
     }
-    
     catch {
-        Write-Host "处理 $urls 时出错: $_"
+        Write-Host "处理 $url 时出错: $_"
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
-    }finally {
-        [System.Threading.Monitor]::Exit($using:uniqueRules)
+    }
     Start-Sleep -Seconds 1
 }
 
 $jobs2 = foreach ($url in $urlList) {
-   
-            Start-ThreadJob -ScriptBlock $scriptBlock2 -ArgumentList $url 
+            Write-Host "开始执行"
+            Start-ThreadJob -ScriptBlock $scriptBlock2 -ArgumentList $url
+            Start-Sleep -Seconds 1
             
     
 
@@ -1284,7 +1345,7 @@ Wait-Job -Job $jobs2
         foreach ($job in $jobs2) {
             Receive-Job -Job $job
         }
-}
+
     
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
