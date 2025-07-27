@@ -1284,6 +1284,7 @@ Wait-Job -Job $jobs2
         foreach ($job in $jobs2) {
             Receive-Job -Job $job
         }
+        }
     
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
