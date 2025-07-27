@@ -1238,7 +1238,7 @@ $scriptBlock2 = {
             # 清理非法字符
             $fileName = $fileName -replace '[\\/:*?"<>|]', '_'
             # 临时工作目录
-            $tempDir = "$env:TEMP\cidr_$(Get-Date -Format yyyyMMddHH)"
+            $tempDir = "./cidr_$(Get-Date -Format yyyyMMddHH)"
             # 修改文件后缀名
             $fileName = [System.IO.Path]::GetFileNameWithoutExtension($fileName) + ".txt"
             # 检查路径是否存在
