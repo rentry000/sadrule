@@ -1219,7 +1219,8 @@ $scriptBlock2 = {
     param($url)
 
     Write-Host "IPv4: $url"
-    try {
+    [System.Threading.Monitor]::Enter($using:lockObj)
+    try{
         # 读取并拆分内容为行$_.Trim() -notmatch '^#'
         
         # 创建WebClient对象用于下载规则
@@ -1265,9 +1266,10 @@ $scriptBlock2 = {
     catch {
         Write-Host "处理 $urls 时出错: $_"
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
-    }
+    }finally {
+        [System.Threading.Monitor]::Exit($using:lockObj)
     Start-Sleep -Seconds 1
-} 
+}
 
 $jobs2 = foreach ($url in $urlList) {
    
