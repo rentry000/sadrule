@@ -1330,10 +1330,7 @@ $scriptBlock2 = {
             Start-Sleep -Seconds 1
                
             }
-            Wait-Job -Job $jobs2
-        foreach ($job in $jobs2) {
-            Receive-Job -Job $job
-        }
+            
     }
     catch {
         Write-Host "处理 $url 时出错: $_"
@@ -1343,7 +1340,10 @@ $scriptBlock2 = {
         
 }
 
-
+Wait-Job -Job $jobs2
+        foreach ($job in $jobs2) {
+            Receive-Job -Job $job
+        }
     
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
