@@ -1253,13 +1253,13 @@ $scriptBlock2 = {
                     }
             
                 }
-    Start-Sleep -Seconds 1
+    Start-Sleep -Seconds 0.5
 }
 
 
-$jobs2 = foreach ($url in $urlList) {
+       foreach ($url in $urlList) {
             Write-Host "开始执行"
-            Write-Host "IPv4: $url"
+            Write-Host "下载地址: $url"
     try {
             # 获取原始文件名
             $response = Invoke-WebRequest -Uri $Url -Method Head
@@ -1315,8 +1315,8 @@ $jobs2 = foreach ($url in $urlList) {
         # $webClient.DownloadString($url, $fullPath)    
         # $reader = [System.IO.StreamReader]::new($fullPath) 
         $reader = [System.IO.File]::OpenText($fullPath)
-          while (!$reader.EndOfStream) {
-                $chunk = foreach ($i in 1..$chunkSize) {
+        $jobs2 =  while (!$reader.EndOfStream) {
+                $chunk = foreach ($i in 1..$using:chunkSize) {
                 if ($reader.EndOfStream) { break}
                     $line = $reader.ReadLine().Trim()
                    
@@ -1330,21 +1330,21 @@ $jobs2 = foreach ($url in $urlList) {
             Start-Sleep -Seconds 1
                
             }
-            
+            # 等待所有线程任务执行完成
+        Wait-Job -Job $jobs2
+        foreach ($job in $jobs2) {
+            Receive-Job -Job $job
+        }
             
     }
     catch {
         Write-Host "处理 $url 时出错: $_"
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
     }
-       
+       Start-Sleep -Seconds 1
 }
 
-# 等待所有线程任务执行完成
-        Wait-Job -Job $jobs2
-        foreach ($job in $jobs2) {
-            Receive-Job -Job $job
-        }
+
     
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
