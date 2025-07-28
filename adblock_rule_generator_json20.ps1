@@ -28,7 +28,7 @@ $singBoxConfig = @{
 }
 
 # 线程安全集合保存处理结果
-($using:resultQueue) = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
+$resultQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 
 # 处理单个分块的函数
 $processChunkScript = {
