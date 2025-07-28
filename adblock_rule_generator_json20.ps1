@@ -28,7 +28,7 @@ $singBoxConfig = @{
 }
 
 # 线程安全集合保存处理结果
-$resultQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
+($using:resultQueue) = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 
 # 处理单个分块的函数
 $processChunkScript = {
@@ -49,7 +49,7 @@ $processChunkScript = {
         }
 
         # 将结果添加到线程安全队列
-        $resultQueue.Enqueue($processed)
+        ($using:resultQueue).Enqueue($processed)
     } catch {
         Write-Warning "处理分块失败：$url (行 $startLine-$endLine) - $_"
     }
@@ -73,8 +73,8 @@ $jobs = foreach ($file in $remoteFiles) {
 $jobs | Wait-Job | Receive-Job -AutoRemoveJob -wait
 
 # 合并结果到 JSON 配置
-while ($resultQueue.TryDequeue([ref]$null)) {
-    $singBoxConfig.route.rules += $resultQueue.ToArray()
+while (($using:resultQueue).TryDequeue([ref]$null)) {
+    $singBoxConfig.route.rules += ($using:resultQueue).ToArray()
 }
 
 # 生成最终 JSON 文件
