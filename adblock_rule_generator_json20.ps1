@@ -70,7 +70,7 @@ $jobs = foreach ($file in $remoteFiles) {
 }
 
 # 等待所有任务完成
-$jobs | Wait-Job | Receive-Job $jobs.ld -AutoRemoveJob
+$jobs | Wait-Job | Receive-Job -$jobs.ld -AutoRemoveJob
 
 # 合并结果到 JSON 配置
 while ($resultQueue.TryDequeue([ref]$null)) {
