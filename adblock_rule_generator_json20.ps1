@@ -1222,7 +1222,7 @@ $chunkSize = 100
 $scriptBlock2 = {
     param($chunk)
 
-    Write-Host "IPv4: $url"
+    
     foreach ($line in $chunk) {
                     if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
                         # Write-Host "IPv4: $line"
@@ -1257,7 +1257,7 @@ $scriptBlock2 = {
 }
 
 
- foreach ($url in $urlList) {
+$jobs2 = foreach ($url in $urlList) {
             Write-Host "开始执行"
             Write-Host "IPv4: $url"
     try {
@@ -1315,7 +1315,7 @@ $scriptBlock2 = {
         # $webClient.DownloadString($url, $fullPath)    
         # $reader = [System.IO.StreamReader]::new($fullPath) 
         $reader = [System.IO.File]::OpenText($fullPath)
-           $jobs2 = while (!$reader.EndOfStream) {
+          while (!$reader.EndOfStream) {
                 $chunk = foreach ($i in 1..$chunkSize) {
                 if ($reader.EndOfStream) { break}
                     $line = $reader.ReadLine().Trim()
@@ -1331,19 +1331,20 @@ $scriptBlock2 = {
                
             }
             
+            
     }
     catch {
         Write-Host "处理 $url 时出错: $_"
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
     }
-        # 等待所有线程任务执行完成
+       
+}
+
+# 等待所有线程任务执行完成
         Wait-Job -Job $jobs2
         foreach ($job in $jobs2) {
             Receive-Job -Job $job
         }
-}
-
-
     
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
