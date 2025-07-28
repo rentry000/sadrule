@@ -1337,13 +1337,13 @@ $scriptBlock2 = {
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
     }
         # 等待所有线程任务执行完成
-        
-}
-
-Wait-Job -Job $jobs2
+        Wait-Job -Job $jobs2
         foreach ($job in $jobs2) {
             Receive-Job -Job $job
         }
+}
+
+
     
 # 在写入文件之前进行DNS规范验证
 $validRules = [System.Collections.Generic.HashSet[string]]::new()
