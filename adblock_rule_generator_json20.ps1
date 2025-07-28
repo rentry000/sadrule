@@ -1215,7 +1215,7 @@ else {
 }
 # 创建临时目录
 
-$chunkSize = 100
+#$chunkSize = 100
 # 函数1：拆分大文件为多个块
 
 
@@ -1316,7 +1316,7 @@ $scriptBlock2 = {
         # $reader = [System.IO.StreamReader]::new($fullPath) 
         $reader = [System.IO.File]::OpenText($fullPath)
         $jobs2 =  while (!$reader.EndOfStream) {
-                $chunk = foreach ($i in 1..$using:chunkSize) {
+                $chunk = foreach ($i in 1..100) {
                 if ($reader.EndOfStream) { break}
                     $line = $reader.ReadLine().Trim()
                    
