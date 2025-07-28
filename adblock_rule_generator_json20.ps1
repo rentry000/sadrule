@@ -1215,13 +1215,51 @@ else {
 }
 # 创建临时目录
 
-$chunkSize = 3000
+$chunkSize = 100
 # 函数1：拆分大文件为多个块
 
+
 $scriptBlock2 = {
-    param($url)
+    param($chunk)
 
     Write-Host "IPv4: $url"
+    foreach ($line in $chunk) {
+                    if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
+                        # Write-Host "IPv4: $line"
+                        $domain = $Matches[0] + "/" + "255"
+                        # Write-Host "$domain"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理IPv6
+                
+                    elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/') ) {
+                        $domain = $Matches[0] + "/" + "255"
+                        # Write-Host "IPv4: $line"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理CIDR
+                    elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
+                        #Write-Host "IPv4cidr: $line"
+                        $domain = $Matches[0] 
+                        #Write-Host "$domain"
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+                    # 处理CIDR
+                    elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
+                
+                        # Write-Host "IPv6cidr: $line"
+                        $domain = $Matches[0]
+                        ($using:uniqueRules).Add($domain) | Out-Null
+                    }
+            
+                }
+    Start-Sleep -Seconds 1
+}
+
+
+ foreach ($url in $urlList) {
+            Write-Host "开始执行"
+            Write-Host "IPv4: $url"
     try {
             # 获取原始文件名
             $response = Invoke-WebRequest -Uri $Url -Method Head
@@ -1277,74 +1315,34 @@ $scriptBlock2 = {
         # $webClient.DownloadString($url, $fullPath)    
         # $reader = [System.IO.StreamReader]::new($fullPath) 
         $reader = [System.IO.File]::OpenText($fullPath)
-            while (!$reader.EndOfStream) {
+           $jobs2 = while (!$reader.EndOfStream) {
                 $chunk = foreach ($i in 1..$chunkSize) {
                 if ($reader.EndOfStream) { break}
                     $line = $reader.ReadLine().Trim()
-                    ifif ($line -eq $null) { break }
+                   
                     if ($line -eq $null) { break }
                     $line.Trim()
                     # Write-Host $line
                 }
                 if (-not $chunk) { break }
                  
-                
-                $lines = $chunk
-                # Write-Host "IPv6: $lines"
-                #Write-Host "$lines"
-                foreach ($line in $lines) {
-                    if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
-                        # Write-Host "IPv4: $line"
-                        $domain = $Matches[0] + "/" + "255"
-                        # Write-Host "$domain"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理IPv6
-                
-                    elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/') ) {
-                        $domain = $Matches[0] + "/" + "255"
-                        # Write-Host "IPv4: $line"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理CIDR
-                    elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
-                        #Write-Host "IPv4cidr: $line"
-                        $domain = $Matches[0] 
-                        #Write-Host "$domain"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理CIDR
-                    elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
-                
-                        # Write-Host "IPv6cidr: $line"
-                        $domain = $Matches[0]
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-            
-                }
+                Start-ThreadJob -ScriptBlock $scriptBlock2 -ArgumentList $chunk
+            Start-Sleep -Seconds 1
+               
             }
+            Wait-Job -Job $jobs2
+        foreach ($job in $jobs2) {
+            Receive-Job -Job $job
+        }
     }
     catch {
         Write-Host "处理 $url 时出错: $_"
         #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
     }
-    Start-Sleep -Seconds 1
-}
-
-$jobs2 = foreach ($url in $urlList) {
-            Write-Host "开始执行"
-            Start-ThreadJob -ScriptBlock $scriptBlock2 -ArgumentList $url
-            Start-Sleep -Seconds 1
-            
-    
-
         # 等待所有线程任务执行完成
         
 }
-Wait-Job -Job $jobs2
-        foreach ($job in $jobs2) {
-            Receive-Job -Job $job
-        }
+
 
     
 # 在写入文件之前进行DNS规范验证
