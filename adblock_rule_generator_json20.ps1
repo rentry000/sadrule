@@ -1195,7 +1195,7 @@ $remoteFiles = @(
 )
 
 # 分块大小（单位：行）
-$chunkSize = 5000
+$chunkSize = 10000
 
 
 
