@@ -477,7 +477,7 @@ $remoteFiles = @(
 )
 
 # 分块大小（单位：行）
-$chunkSize = 1000
+$chunkSize = 5000
 
 
 
@@ -486,7 +486,7 @@ $resultQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 
 # 处理单个分块的函数
 $processChunkScript = {
-    param($url, $startLine, $endLine,$using:resultQueue)
+    param($url, $startLine, $endLine)
     
     try {
         # 下载远程文件分块（模拟示例）
@@ -494,9 +494,12 @@ $processChunkScript = {
         $chunkData = $content[$startLine..$endLine]
 
         # 模拟处理逻辑（例如解析路由规则）
-        $processed = foreach ($line in $chunkData) {
-             @($line.Trim())
+        $processed = $chunkData | Foreach-Object -ThrottleLimit 5 -Parallel {
+            @($_.Trim())
         }
+        # $processed = foreach ($line in $chunkData){
+        #      @($line.Trim())
+        # }
 
         # 将结果添加到线程安全队列
         ($using:resultQueue).Enqueue($processed)
@@ -516,7 +519,7 @@ $jobs = foreach ($file in $remoteFiles) {
         $start = $i
         $end = [Math]::Min($i + $chunkSize - 1, $totalLines - 1)
         
-        Start-ThreadJob -ScriptBlock $processChunkScript -ArgumentList $file, $start, $end,$resultQueue
+        Start-ThreadJob -ScriptBlock $processChunkScript -ArgumentList $file, $start, $end
     }
 }
 
@@ -532,11 +535,11 @@ $jobs | Wait-Job | Receive-Job -AutoRemoveJob -wait
 # 排除所有白名单规则中的域名
 $uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
 $array = $resultQueue.ToArray() -split " "
-foreach ($line in $array) {
-    #Write-Host "IPv4: $line"
-                    if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
+for ($i = 0; $i -lt $array.Count; $i++) {
+   # Write-Host "IPv4: $line"
+                    if ($array[$i] -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($array[$i].Trim() -notmatch '^#') -and ($array[$i] -notmatch '/')) {
                         # Write-Host "IPv4: $line"
-                        $domain = $line + "/" + "32"
+                        $domain = $array[$i] + "/" + "32"
                         # Write-Host "$domain"
                         if ($domain.Contains(".") -and($domain.Length -ge 4) ){
                             $uniqueRules.Add($domain) | Out-Null
@@ -545,21 +548,21 @@ foreach ($line in $array) {
                     }
                     # 处理IPv6
                 
-                    elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/') ) {
-                        $domain = $line + "/" + "128"
+                    elseif ($array[$i] -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($array[$i].Trim() -notmatch '^#') -and ($array[$i] -notmatch '/') ) {
+                        $domain = $array[$i] + "/" + "128"
                         if ($domain.Contains(".") -and($domain.Contains(":") )){
                             $uniqueRules.Add($domain) | Out-Null
                         }
                     }
                     # 处理CIDR
-                    elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
-                        #Write-Host "IPv4cidr: $line"
+                    elseif ($array[$i] -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$' -and ($array[$i].Trim() -notmatch '^#')) {
+                        #Write-Host "IPv4cidr: $array[$i]"
                         $domain = $Matches[0] 
                         #Write-Host "$domain"
                         $uniqueRules.Add($domain) | Out-Null
                     }
                     # 处理CIDR
-                    elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
+                    elseif ($array[$i] -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$' -and ($array[$i].Trim() -notmatch '^#')) {
                 
                         # Write-Host "IPv6cidr: $line"
                         $domain = $Matches[0]
@@ -577,13 +580,13 @@ $singBoxConfig = @{
 }
 
 # 定义输出文件路径
-$outputPath = "$PSScriptRoot/adblock_reject21.json"
+$outputPath = "$PSScriptRoot/adblock_reject20.json"
 
 # 转换为带紧凑缩进的JSON格式
 $jsonFormatted = $singBoxConfig | ConvertTo-Json -Depth 10 | ForEach-Object { $_.Trim() }
 $jsonFormatted | Out-File -FilePath $outputPath -Encoding utf8
 
-Write-Host "生成成功：adblock_reject21.json" -ForegroundColor Green
+Write-Host "生成成功：adblock_reject20.json" -ForegroundColor Green
 # 统计生成的规则条目数量
 $ruleCount = $uniqueRules.Count
 Write-Host "生成的有效规则总数: $ruleCount"
