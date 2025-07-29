@@ -318,10 +318,10 @@ $jobs | Wait-Job | Receive-Job -AutoRemoveJob -wait
 $uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
 $array = $resultQueue.ToArray() -split " "
 foreach ($line in $array) {
-    Write-Host "IPv4: $line"
+   # Write-Host "IPv4: $line"
                     if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
                         # Write-Host "IPv4: $line"
-                        $domain = $line + "/" + "255"
+                        $domain = $line + "/" + "32"
                         # Write-Host "$domain"
                         if ($domain.Contains(".") -and($domain.Length -ge 4) ){
                             $uniqueRules.Add($domain) | Out-Null
@@ -331,7 +331,7 @@ foreach ($line in $array) {
                     # 处理IPv6
                 
                     elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/') ) {
-                        $domain = $line + "/" + "255"
+                        $domain = $line + "/" + "128"
                         if ($domain.Contains(".") -and($domain.Contains(":") )){
                             $uniqueRules.Add($domain) | Out-Null
                         }
