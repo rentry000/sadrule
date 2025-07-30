@@ -282,7 +282,9 @@ $allProcessedCidrs = $downloadedFiles | ForEach-Object -Parallel {
     $filePath = $_
     $ipAddress = [System.Net.IPAddress]::None
     foreach ($line in [System.IO.File]::ReadLines($filePath)) {
-       $line = ($line -split '#')[0].Trim() if ([string]::IsNullOrEmpty($line)){ continue }
+       $line = ($line -split '#')[0].Trim() 
+       if ([string]::IsNullOrEmpty($line)){ 
+       continue }
         $trimmedLine = $line.Trim()
         if ($trimmedLine -and $trimmedLine[0] -ne '#') {
             if ($trimmedLine.Contains('/')) {
