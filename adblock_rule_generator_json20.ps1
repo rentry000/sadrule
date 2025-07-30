@@ -496,32 +496,36 @@ if ($downloadedFiles.Count -eq 0) {
 }
 Write-Host "文件下载完成。"
 
-Write-Host "开始并行处理文件并聚合 IP..."
-$allIpCidrs = $downloadedFiles | ForEach-Object -Parallel {
+Write-Host "开始并行处理文件并聚合 CIDR..."
+$allProcessedCidrs = $downloadedFiles | ForEach-Object -Parallel {
     $filePath = $_
     $ipAddress = [System.Net.IPAddress]::None
     foreach ($line in [System.IO.File]::ReadLines($filePath)) {
-        if ($line -and $line[0] -ne '#') {
-            if ([System.Net.IPAddress]::TryParse($line, [ref]$ipAddress)) {
+        $trimmedLine = $line.Trim()
+        if ($trimmedLine -and $trimmedLine[0] -ne '#') {
+            if ($trimmedLine.Contains('/')) {
+                $trimmedLine
+            }
+            elseif ([System.Net.IPAddress]::TryParse($trimmedLine, [ref]$ipAddress)) {
                 if ($ipAddress.AddressFamily -eq 'InterNetwork') {
-                    "$line/32"
+                    "$trimmedLine/32"
                 }
                 elseif ($ipAddress.AddressFamily -eq 'InterNetworkV6') {
-                    "$line/128"
+                    "$trimmedLine/128"
                 }
             }
         }
     }
 } -ThrottleLimit $throttleLimit
 
-Write-Host "文件处理完成，共收集到 $($allIpCidrs.Count) 条有效 IP CIDR。"
+Write-Host "文件处理完成，共收集到 $($allProcessedCidrs.Count) 条有效条目。"
 
-Write-Host "正在生成整合的 sing-box rule set 文件..."
+Write-Host "正在去重并生成整合的 sing-box rule set 文件..."
 $ruleSet = @{
     version = 1
     rules   = @(
         @{
-            ip_cidr = $allIpCidrs | Select-Object -Unique
+            ip_cidr = $allProcessedCidrs | Select-Object -Unique
         }
     )
 }
