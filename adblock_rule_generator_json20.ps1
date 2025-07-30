@@ -2,15 +2,11 @@
 
 $urls = @(
     "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset",
-    "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset"
+    "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset",
+    "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level3.netset"
 )
-$outputDir = "rule_sets"
-$chunkSize = 50000
+$finalRuleSetFile = "adblock_reject20.json"
 $throttleLimit = [System.Environment]::ProcessorCount
-
-if (-not (Test-Path -Path $outputDir)) {
-    New-Item -Path $outputDir -ItemType Directory | Out-Null
-}
 
 Write-Host "开始并行下载文件..."
 $downloadedFiles = $urls | ForEach-Object -Parallel {
@@ -32,17 +28,19 @@ if ($downloadedFiles.Count -eq 0) {
 }
 Write-Host "文件下载完成。"
 
-Write-Host "开始并行处理文件并转换 IP..."
+Write-Host "开始并行处理文件并聚合 IP..."
 $allIpCidrs = $downloadedFiles | ForEach-Object -Parallel {
     $filePath = $_
     $ipAddress = [System.Net.IPAddress]::None
     foreach ($line in [System.IO.File]::ReadLines($filePath)) {
-        if ([System.Net.IPAddress]::TryParse($line, [ref]$ipAddress)) {
-            if ($ipAddress.AddressFamily -eq 'InterNetwork') {
-                "$line/32"
-            }
-            elseif ($ipAddress.AddressFamily -eq 'InterNetworkV6') {
-                "$line/128"
+        if ($line -and $line[0] -ne '#') {
+            if ([System.Net.IPAddress]::TryParse($line, [ref]$ipAddress)) {
+                if ($ipAddress.AddressFamily -eq 'InterNetwork') {
+                    "$line/32"
+                }
+                elseif ($ipAddress.AddressFamily -eq 'InterNetworkV6') {
+                    "$line/128"
+                }
             }
         }
     }
@@ -50,29 +48,17 @@ $allIpCidrs = $downloadedFiles | ForEach-Object -Parallel {
 
 Write-Host "文件处理完成，共收集到 $($allIpCidrs.Count) 条有效 IP CIDR。"
 
-Write-Host "正在将数据分块并生成规则集文件..."
-$totalItems = $allIpCidrs.Count
-$chunkCount = [System.Math]::Ceiling($totalItems / $chunkSize)
-
-for ($i = 0; $i -lt $chunkCount; $i++) {
-    $startIndex = $i * $chunkSize
-    $endIndex = [System.Math]::Min($startIndex + $chunkSize - 1, $totalItems - 1)
-    $chunk = $allIpCidrs[$startIndex..$endIndex]
-    
-    if ($chunk.Count -gt 0) {
-        $ruleSet = @{
-            version = 1
-            rules   = @(
-                @{
-                    ip_cidr = $chunk
-                }
-            )
+Write-Host "正在生成整合的 sing-box rule set 文件..."
+$ruleSet = @{
+    version = 1
+    rules   = @(
+        @{
+            ip_cidr = $allIpCidrs | Select-Object -Unique
         }
-        $outputFile = Join-Path $outputDir "ruleset_part_$($i + 1).json"
-        $ruleSet | ConvertTo-Json -Depth 5 | Set-Content -Path $outputFile -Encoding UTF8 -NoNewline
-        Write-Host "已生成: $outputFile"
-    }
+    )
 }
+$ruleSet | ConvertTo-Json -Depth 5 | Set-Content -Path $PSScriptRoot/finalRuleSetFile -Encoding UTF8 -NoNewline
+Write-Host "Rule set 文件已成功生成：$finalRuleSetFile"
 
 Write-Host "正在清理临时文件..."
 $downloadedFiles | ForEach-Object { Remove-Item $_ -Force }
