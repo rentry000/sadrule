@@ -251,7 +251,8 @@ $urls = @(
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/nam.txt",
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_eur.txt",
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_neu.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_seu.txt"
+"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_seu.txt",
+"https://github.com/borestad/blocklist-abuseipdb/raw/refs/heads/main/abuseipdb-s100-all.ipv4"
 )
 $finalRuleSetFile = "adblock_reject22.json"
 $throttleLimit = [System.Environment]::ProcessorCount
