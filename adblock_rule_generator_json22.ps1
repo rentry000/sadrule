@@ -305,7 +305,7 @@ $ruleSet = @{
     version = 1
     rules   = @(
         @{
-            ip_cidr = $allProcessedCidrs | Select-Object -Unique
+            ip_cidr = $allProcessedCidrs
         }
     )
 }
