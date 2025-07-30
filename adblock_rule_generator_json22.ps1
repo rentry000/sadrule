@@ -473,7 +473,7 @@ $urls = @(
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sj.netset",
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
 )
-$finalRuleSetFile = "adblock_reject20.json"
+$finalRuleSetFile = "adblock_reject22.json"
 $throttleLimit = [System.Environment]::ProcessorCount
 
 Write-Host "开始并行下载文件..."
