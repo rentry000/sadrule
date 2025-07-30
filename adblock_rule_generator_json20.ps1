@@ -1,9 +1,7 @@
 #Requires -Version 7.0
 
 $urls = @(
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level3.netset",
+  
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/geolite2_country/anonymous.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/geolite2_country/continent_af.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/geolite2_country/continent_an.netset",
@@ -470,8 +468,7 @@ $urls = @(
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sg.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sh.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_si.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sj.netset",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
+"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sj.netset"
 )
 $finalRuleSetFile = "adblock_reject20.json"
 $throttleLimit = [System.Environment]::ProcessorCount
@@ -496,36 +493,48 @@ if ($downloadedFiles.Count -eq 0) {
 }
 Write-Host "文件下载完成。"
 
-Write-Host "开始并行处理文件并聚合 CIDR..."
-$allProcessedCidrs = $downloadedFiles | ForEach-Object -Parallel {
+Write-Host "开始并行处理文件并聚合 IP..."
+$allIpCidrs = $downloadedFiles | ForEach-Object -Parallel {
     $filePath = $_
-    $ipAddress = [System.Net.IPAddress]::None
+    #$ipAddress = [System.Net.IPAddress]::None
     foreach ($line in [System.IO.File]::ReadLines($filePath)) {
-        $trimmedLine = $line.Trim()
-        if ($trimmedLine -and $trimmedLine[0] -ne '#') {
-            if ($trimmedLine.Contains('/')) {
-                $trimmedLine
-            }
-            elseif ([System.Net.IPAddress]::TryParse($trimmedLine, [ref]$ipAddress)) {
-                if ($ipAddress.AddressFamily -eq 'InterNetwork') {
-                    "$trimmedLine/32"
+        $line = ($line -split '#')[0].Trim()
+         if ([string]::IsNullOrEmpty($line)){ continue }
+        if ($line -and $line[0] -ne '#') {
+            if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
+                    $line = $Matches[0]  + "/" + "32"
+                    $line
                 }
-                elseif ($ipAddress.AddressFamily -eq 'InterNetworkV6') {
-                    "$trimmedLine/128"
+                # 处理IPv6
+                
+                elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$'-and ($line.Trim() -notmatch '^#')-and ($line -notmatch '/') ) {
+                    $line = $Matches[0]  + "/" + "128"
+                    $line
                 }
-            }
+                # 处理CIDR
+                elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
+                    #Write-Host "IPv4cidr: $line"
+                    $line = $Matches[0] 
+                    $line
+                }
+                # 处理CIDR
+                elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
+                
+                    $line = $Matches[0]
+                   $line
+                }
         }
     }
 } -ThrottleLimit $throttleLimit
 
-Write-Host "文件处理完成，共收集到 $($allProcessedCidrs.Count) 条有效条目。"
+Write-Host "文件处理完成，共收集到 $($allIpCidrs.Count) 条有效 IP CIDR。"
 
-Write-Host "正在去重并生成整合的 sing-box rule set 文件..."
+Write-Host "正在生成整合的 sing-box rule set 文件..."
 $ruleSet = @{
     version = 1
     rules   = @(
         @{
-            ip_cidr = $allProcessedCidrs
+            ip_cidr = $allIpCidrs
         }
     )
 }

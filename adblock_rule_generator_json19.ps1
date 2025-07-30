@@ -1,15 +1,9 @@
-# Title: AdBlock_Rule_For_Sing-box
-# Description: 适用于Sing-box的域名拦截规则集，每20分钟更新一次，确保即时同步上游减少误杀
-# Homepage: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box
-# LICENSE1: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-GPL 3.0
-# LICENSE2: https://github.com/REIJI007/AdBlock_Rule_For_Sing-box/blob/main/LICENSE-CC-BY-NC-SA 4.0
-Import-Module ThreadJob
+#Requires -Version 7.0
 
-# 定义广告过滤器URL列表
-$urlList = @(
-
-#"https://www.bromite.org/filters/filters.dat",
-#"https://raw.githubusercontent.com/Metrokoto/filterlists/refs/heads/main/combined_annoyances_without_element_hiding.txt",
+$urls = @(
+    "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset",
+    "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset",
+    "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level3.netset",
 "https://github.com/bitwire-it/ipblocklist/raw/refs/heads/main/ip-list.txt",
 "https://github.com/TimmiORG/ip-blacklist/raw/refs/heads/main/all.list.use",
 "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_africa.ipset",
@@ -340,205 +334,83 @@ $urlList = @(
 "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/master.ipset",
 "https://github.com/borestad/blocklist-abuseipdb/raw/refs/heads/main/abuseipdb-s100-all.ipv4",
 "https://github.com/ashleykleynhans/ipset/raw/refs/heads/main/ipv4.csv",
-"https://raw.githubusercontent.com/tn3w/IPSet/refs/heads/master/iplist.txt"
-
-
+"https://raw.githubusercontent.com/tn3w/IPSet/refs/heads/master/iplist.txt",
+"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
 )
+$finalRuleSetFile = "adblock_reject19.json"
+$throttleLimit = [System.Environment]::ProcessorCount
 
-
-# 初始化线程安全的集合，用于存储所有 CIDR（PowerShell 7+ 支持）
-$uniqueRules = [System.Collections.Concurrent.ConcurrentBag[object]]::new()
-
-# 创建两个HashSet来存储唯一的规则和排除的域名
-#$uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
-$global:excludedDomains = [System.Collections.Generic.HashSet[string]]::new()
-
-$n = "1.12.12.12/13"
-$uniqueRules.add($n)
-
-if ($uniqueRules -ne $null) {
-    $uniqueRules.ToString()
-}
-else {
-    Write-Host "Variable is null, cannot call method."
-}
-# 创建临时目录
-
-$chunkSize = 3000
-# 函数1：拆分大文件为多个块
-
-$scriptBlock2 = {
-    param($url)
-
-    Write-Host "IPv4: $url"
+Write-Host "开始并行下载文件..."
+$downloadedFiles = $urls | ForEach-Object -Parallel {
+    $url = $_
+    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
     try {
-            # 获取原始文件名
-            $response = Invoke-WebRequest -Uri $Url -Method Head
-    
-            # 方法1：从响应头获取文件名
-            if ($response.Headers['Content-Disposition']) {
-                $fileName = ($response.Headers['Content-Disposition'] -split 'filename=')[1].Trim('"')
-            }
-            # 方法2：从URL路径获取文件名
-            else {
-                $fileName = $Url.Split('/')[-1]
-            }
-
-            # 清理非法字符
-            $fileName = $fileName -replace '[\\/:*?"<>|]', '_'
-            # 临时工作目录
-            $tempDir = "./cidr_$(Get-Date -Format yyyyMMddHH)"
-            # 修改文件后缀名
-            $fileName = [System.IO.Path]::GetFileNameWithoutExtension($fileName) + ".txt"
-            # 检查路径是否存在
-            if (-not (Test-Path $tempDir)) {
-                # 自动创建路径（包括所有父目录）
-                New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
-            }
-            # 完整保存路径
-            $fullPath = Join-Path $tempDir $fileName
-
-            # 下载文件
-            Invoke-WebRequest -Uri $Url -OutFile $fullPath
-            
-            Get-Content $fullPath -ReadCount 1000 | 
-            ForEach-Object { $_ | Where { $_.Trim() -ne '' } } | 
-            Add-Content $fullPath
-            # 显示结果
-            Write-Host "下载完成！" -ForegroundColor Green
-            Write-Host "保存路径: $fullPath" 
-        }
-        catch {
-            Write-Host "下载失败: $_" -ForegroundColor Red
-        }
-    try{
-        # 读取并拆分内容为行$_.Trim() -notmatch '^#'
-        # 创建WebClient对象用于下载规则
-        # $webClient = New-Object System.Net.WebClient
-        # $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-        # # 临时工作目录
-        # $tempDir = "$env:TEMP\cidr_$(Get-Date -Format yyyyMMddHHmmss)"
-        # $fileName = $Url.Split('/')[-1]
-        # if($tempDir -eq $null){New-Item -ItemType Directory $tempDir | Out-Null}
-        # $fullPath = Join-Path $tempDir $fileName
-        # Write-Host "路径: $fullPath"
-        # Invoke-WebRequest -Uri $Url -Method Head
-        # $webClient.DownloadString($url, $fullPath)    
-        # $reader = [System.IO.StreamReader]::new($fullPath) 
-        $reader = [System.IO.File]::OpenText($fullPath)
-            while (!$reader.EndOfStream) {
-                $chunk = foreach ($i in 1..$chunkSize) {
-                if ($reader.EndOfStream) { break}
-                    $line = $reader.ReadLine().Trim()
-                    ifif ($line -eq $null) { break }
-                    if ($line -eq $null) { break }
-                    $line.Trim()
-                    # Write-Host $line
-                }
-                if (-not $chunk) { break }
-                 
-                
-                $lines = $chunk
-                # Write-Host "IPv6: $lines"
-                #Write-Host "$lines"
-                foreach ($line in $lines) {
-                    if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
-                        # Write-Host "IPv4: $line"
-                        $domain = $Matches[0] + "/" + "255"
-                        # Write-Host "$domain"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理IPv6
-                
-                    elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/') ) {
-                        $domain = $Matches[0] + "/" + "255"
-                        # Write-Host "IPv4: $line"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理CIDR
-                    elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
-                        #Write-Host "IPv4cidr: $line"
-                        $domain = $Matches[0] 
-                        #Write-Host "$domain"
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-                    # 处理CIDR
-                    elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$' -and ($line.Trim() -notmatch '^#')) {
-                
-                        # Write-Host "IPv6cidr: $line"
-                        $domain = $Matches[0]
-                        ($using:uniqueRules).Add($domain) | Out-Null
-                    }
-            
-                }
-            }
+        Invoke-WebRequest -Uri $url -OutFile $tempFile -UseBasicParsing -ErrorAction Stop
+        return $tempFile
     }
     catch {
-        Write-Host "处理 $url 时出错: $_"
-        #Add-Content -Path $using:logFilePath -Value "处理 $url 时出错: $_"
+        Write-Warning "下载失败: $url"
     }
-    Start-Sleep -Seconds 1
-}
+} -ThrottleLimit $throttleLimit
 
-$jobs2 = foreach ($url in $urlList) {
-            Write-Host "开始执行"
-            Start-ThreadJob -ScriptBlock $scriptBlock2 -ArgumentList $url
-            Start-Sleep -Seconds 1
-            
-    
-
-        # 等待所有线程任务执行完成
-        
+$downloadedFiles = $downloadedFiles | Where-Object { $_ }
+if ($downloadedFiles.Count -eq 0) {
+    Write-Error "所有文件下载失败，脚本终止。"
+    exit
 }
-Wait-Job -Job $jobs2
-        foreach ($job in $jobs2) {
-            Receive-Job -Job $job
+Write-Host "文件下载完成。"
+
+Write-Host "开始并行处理文件并聚合 IP..."
+$allIpCidrs = $downloadedFiles | ForEach-Object -Parallel {
+    $filePath = $_
+    #$ipAddress = [System.Net.IPAddress]::None
+    foreach ($line in [System.IO.File]::ReadLines($filePath)) {
+        $line = ($line -split '#')[0].Trim()
+         if ([string]::IsNullOrEmpty($line)){ continue }
+        if ($line -and $line[0] -ne '#') {
+            if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
+                    $line = $Matches[0]  + "/" + "32"
+                    $line
+                }
+                # 处理IPv6
+                
+                elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$'-and ($line.Trim() -notmatch '^#')-and ($line -notmatch '/') ) {
+                    $line = $Matches[0]  + "/" + "128"
+                    $line
+                }
+                # 处理CIDR
+                elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
+                    #Write-Host "IPv4cidr: $line"
+                    $line = $Matches[0] 
+                    $line
+                }
+                # 处理CIDR
+                elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
+                
+                    $line = $Matches[0]
+                   $line
+                }
         }
-
-    
-# 在写入文件之前进行DNS规范验证
-$validRules = [System.Collections.Generic.HashSet[string]]::new()
-$validExcludedDomains = [System.Collections.Generic.HashSet[string]]::new()
-
-foreach ($domain in ($uniqueRules)) {
-    $validRules.Add($domain) | Out-Null
-   
-}
-
-foreach ($domain in $excludedDomains) {
-    if (Is-ValidDNSDomain($domain)) {
-        $validExcludedDomains.Add($domain) | Out-Null
     }
-}
+} -ThrottleLimit $throttleLimit
 
-# 排除所有白名单规则中的域名
-$finalRules = $validRules | Where-Object { -not $validExcludedDomains.Contains($_) }
+Write-Host "文件处理完成，共收集到 $($allIpCidrs.Count) 条有效 IP CIDR。"
 
-# 统计生成的规则条目数量
-$ruleCount = $finalRules.Count
-
-# 将域名按字母顺序排序
-$sortedDomains = $finalRules | Sort-Object
-
-# 将规则格式化为JSON格式
-$jsonContent = @{
-    version = 1  # 设置 version 为 1
+Write-Host "正在生成整合的 sing-box rule set 文件..."
+$ruleSet = @{
+    version = 1
     rules   = @(
         @{
-            ip_cidr = $sortedDomains
+            ip_cidr = $allIpCidrs
         }
     )
 }
+$ruleSet | ConvertTo-Json -Depth 5 | Set-Content -Path $PSScriptRoot/$finalRuleSetFile -Encoding UTF8 -NoNewline
+Write-Host "Rule set 文件已成功生成：$finalRuleSetFile"
 
-# 转换为带紧凑缩进的JSON格式
-$jsonFormatted = $jsonContent | ConvertTo-Json -Depth 10 | ForEach-Object { $_.Trim() }
+Write-Host "正在清理临时文件..."
+$downloadedFiles | ForEach-Object { Remove-Item $_ -Force }
 
-# 定义输出文件路径
-$outputPath = "$PSScriptRoot/adblock_reject19.json"
-$jsonFormatted | Out-File -FilePath $outputPath -Encoding utf8
+Write-Host "所有任务完成。"
 
-# 输出生成的有效规则总数
-Write-Host "生成的有效规则总数: $ruleCount"
-#Add-Content -Path $logFilePath -Value "Total entries: $ruleCount"
-
-Pause
+pause
