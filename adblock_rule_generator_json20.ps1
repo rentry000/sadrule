@@ -57,7 +57,7 @@ $ruleSet = @{
         }
     )
 }
-$ruleSet | ConvertTo-Json -Depth 5 | Set-Content -Path $PSScriptRoot/finalRuleSetFile -Encoding UTF8 -NoNewline
+$ruleSet | ConvertTo-Json -Depth 5 | Set-Content -Path $PSScriptRoot/$finalRuleSetFile -Encoding UTF8 -NoNewline
 Write-Host "Rule set 文件已成功生成：$finalRuleSetFile"
 
 Write-Host "正在清理临时文件..."
