@@ -470,7 +470,8 @@ $urls = @(
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sg.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sh.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_si.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sj.netset"
+"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sj.netset",
+"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
 )
 $finalRuleSetFile = "adblock_reject20.json"
 $throttleLimit = [System.Environment]::ProcessorCount
