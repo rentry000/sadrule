@@ -1,11 +1,6 @@
+#Requires -Version 7.0
 
-# 安装 ThreadJob 模块（若未安装）
-if (-not (Get-Module -ListAvailable -Name ThreadJob)) {
-    Install-Module -Name ThreadJob -Force -Scope CurrentUser
-}
-
-# 定义远程文件路径（示例）
-$remoteFiles = @(
+$urls = @(
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mx.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_my.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mz.netset",
