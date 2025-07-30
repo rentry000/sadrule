@@ -1,11 +1,6 @@
+#Requires -Version 7.0
 
-# 安装 ThreadJob 模块（若未安装）
-if (-not (Get-Module -ListAvailable -Name ThreadJob)) {
-    Install-Module -Name ThreadJob -Force -Scope CurrentUser
-}
-
-# 定义远程文件路径（示例）
-$remoteFiles = @(
+$urls = @(
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mx.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_my.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mz.netset",
@@ -256,124 +251,70 @@ $remoteFiles = @(
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/nam.txt",
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_eur.txt",
 "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_neu.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_seu.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
-
+"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_seu.txt"
 )
+$finalRuleSetFile = "adblock_reject22.json"
+$throttleLimit = [System.Environment]::ProcessorCount
 
-# 分块大小（单位：行）
-$chunkSize = 5000
-
-
-
-# 线程安全集合保存处理结果
-$resultQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
-
-# 处理单个分块的函数
-$processChunkScript = {
-    param($url, $startLine, $endLine)
-    
+Write-Host "开始并行下载文件..."
+$downloadedFiles = $urls | ForEach-Object -Parallel {
+    $url = $_
+    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
     try {
-        # 下载远程文件分块（模拟示例）
-        $content = (Invoke-WebRequest -Uri $url -UseBasicParsing).Content -split "`n"
-        $chunkData = $content[$startLine..$endLine]
-
-        # 模拟处理逻辑（例如解析路由规则）
-        $processed = $chunkData | Foreach-Object -ThrottleLimit 5 -Parallel {
-            @($_.Trim())
-        }
-        # $processed = foreach ($line in $chunkData){
-        #      @($line.Trim())
-        # }
-
-        # 将结果添加到线程安全队列
-        ($using:resultQueue).Enqueue($processed)
-    } catch {
-        Write-Warning "处理分块失败：$url (行 $startLine-$endLine) - $_"
+        Invoke-WebRequest -Uri $url -OutFile $tempFile -UseBasicParsing -ErrorAction Stop
+        return $tempFile
     }
-}
-
-# 启动多线程处理
-$jobs = foreach ($file in $remoteFiles) {
-    # 获取文件总行数（此处简化示例）
-    $content = (Invoke-WebRequest -Uri $file -UseBasicParsing).Content -split "`n"
-    $totalLines = $content.count  # 实际需动态获取
-    Write-Host "文件总数: $totalLines"
-    # 分块并提交线程任务
-    for ($i = 0; $i -lt $totalLines; $i += $chunkSize) {
-        $start = $i
-        $end = [Math]::Min($i + $chunkSize - 1, $totalLines - 1)
-        
-        Start-ThreadJob -ScriptBlock $processChunkScript -ArgumentList $file, $start, $end
+    catch {
+        Write-Warning "下载失败: $url"
     }
+} -ThrottleLimit $throttleLimit
+
+$downloadedFiles = $downloadedFiles | Where-Object { $_ }
+if ($downloadedFiles.Count -eq 0) {
+    Write-Error "所有文件下载失败，脚本终止。"
+    exit
 }
+Write-Host "文件下载完成。"
 
-# 等待所有任务完成
-$jobs | Wait-Job | Receive-Job -AutoRemoveJob -wait
-
-# # 合并结果到 JSON 配置
-# while ($resultQueue.TryDequeue([ref]$null)) {
-#     $singBoxConfig.route.rules += $resultQueue.ToArray()
-# }
-# 最终生成的 JSON 结构（根据 sing-box 要求定制）
-# 将规则格式化为JSON格式
-# 排除所有白名单规则中的域名
-$uniqueRules = [System.Collections.Generic.HashSet[string]]::new()
-$array = $resultQueue.ToArray() -split " "
-for ($i = 0; $i -lt $array.Count; $i++) {
-   # Write-Host "IPv4: $line"
-                    if ($array[$i] -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($array[$i].Trim() -notmatch '^#') -and ($array[$i] -notmatch '/')) {
-                        # Write-Host "IPv4: $line"
-                        $domain = $array[$i] + "/" + "32"
-                        # Write-Host "$domain"
-                        if ($domain.Contains(".") -and($domain.Length -ge 4) ){
-                            $uniqueRules.Add($domain) | Out-Null
-                        }
-                        
-                    }
-                    # 处理IPv6
-                
-                    elseif ($array[$i] -match '\s*([0-9a-fA-F:]+)+\s*$' -and ($array[$i].Trim() -notmatch '^#') -and ($array[$i] -notmatch '/') ) {
-                        $domain = $array[$i] + "/" + "128"
-                        if ($domain.Contains(".") -and($domain.Contains(":") )){
-                            $uniqueRules.Add($domain) | Out-Null
-                        }
-                    }
-                    # 处理CIDR
-                    elseif ($array[$i] -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$' -and ($array[$i].Trim() -notmatch '^#')) {
-                        #Write-Host "IPv4cidr: $array[$i]"
-                        $domain = $Matches[0] 
-                        #Write-Host "$domain"
-                        $uniqueRules.Add($domain) | Out-Null
-                    }
-                    # 处理CIDR
-                    elseif ($array[$i] -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$' -and ($array[$i].Trim() -notmatch '^#')) {
-                
-                        # Write-Host "IPv6cidr: $line"
-                        $domain = $Matches[0]
-                        $uniqueRules.Add($domain) | Out-Null
-                    }
-            
+Write-Host "开始并行处理文件并聚合 CIDR..."
+$allProcessedCidrs = $downloadedFiles | ForEach-Object -Parallel {
+    $filePath = $_
+    $ipAddress = [System.Net.IPAddress]::None
+    foreach ($line in [System.IO.File]::ReadLines($filePath)) {
+        $trimmedLine = $line.Trim()
+        if ($trimmedLine -and $trimmedLine[0] -ne '#') {
+            if ($trimmedLine.Contains('/')) {
+                $trimmedLine
+            }
+            elseif ([System.Net.IPAddress]::TryParse($trimmedLine, [ref]$ipAddress)) {
+                if ($ipAddress.AddressFamily -eq 'InterNetwork') {
+                    "$trimmedLine/32"
                 }
-$singBoxConfig = @{
-    version = 1  # 设置 version 为 1
+                elseif ($ipAddress.AddressFamily -eq 'InterNetworkV6') {
+                    "$trimmedLine/128"
+                }
+            }
+        }
+    }
+} -ThrottleLimit $throttleLimit
+
+Write-Host "文件处理完成，共收集到 $($allProcessedCidrs.Count) 条有效条目。"
+
+Write-Host "正在去重并生成整合的 sing-box rule set 文件..."
+$ruleSet = @{
+    version = 1
     rules   = @(
         @{
-            ip_cidr = $uniqueRules
+            ip_cidr = $allProcessedCidrs | Select-Object -Unique
         }
     )
 }
+$ruleSet | ConvertTo-Json -Depth 5 | Set-Content -Path $PSScriptRoot/$finalRuleSetFile -Encoding UTF8 -NoNewline
+Write-Host "Rule set 文件已成功生成：$finalRuleSetFile"
 
-# 定义输出文件路径
-$outputPath = "$PSScriptRoot/adblock_reject20.json"
+Write-Host "正在清理临时文件..."
+$downloadedFiles | ForEach-Object { Remove-Item $_ -Force }
 
-# 转换为带紧凑缩进的JSON格式
-$jsonFormatted = $singBoxConfig | ConvertTo-Json -Depth 10 | ForEach-Object { $_.Trim() }
-$jsonFormatted | Out-File -FilePath $outputPath -Encoding utf8
-
-Write-Host "生成成功：adblock_reject20.json" -ForegroundColor Green
-# 统计生成的规则条目数量
-$ruleCount = $uniqueRules.Count
-Write-Host "生成的有效规则总数: $ruleCount"
+Write-Host "所有任务完成。"
 
 pause
