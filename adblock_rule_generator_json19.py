@@ -77,7 +77,7 @@ def main(file_urls: list[str]) -> None:
     }
 
     # 写入 JSON 文件
-    with open('integrated_rule_set.json', 'w', encoding='utf-8') as f:
+    with open('adblock_reject19.json', 'w', encoding='utf-8') as f:
         json.dump(
             rule_set,
             f,
