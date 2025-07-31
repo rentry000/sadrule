@@ -30,6 +30,8 @@ jobs:
         wget https://github.com/SagerNet/sing-box/releases/download/v1.11.15/sing-box-1.11.15-linux-amd64.tar.gz
         tar -zxvf sing-box-1.11.15-linux-amd64.tar.gz
         sudo apt install -y bash
+        sudo apt install -y python-pip
+        pip install requests
         rm sing-box-1.11.15-linux-amd64.tar.gz  # Clean up downloaded file
 
     - name: Run adblock_rule_generator_json19.py  # Run the Python script
