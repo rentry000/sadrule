@@ -1,333 +1,440 @@
-#Requires -Version 7.0
+import threading
+import queue
+import requests
+import re
+import ipaddress
+import json
 
-$urls = @(
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mx.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_my.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mz.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_na.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_nc.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ne.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_nf.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ng.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ni.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_nl.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_no.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_np.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_nr.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_nu.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_nz.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_om.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pa.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pe.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pf.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pg.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ph.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pk.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pl.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pm.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pn.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pr.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ps.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pt.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_pw.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_py.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_qa.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_re.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ro.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_rs.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ru.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_rw.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sa.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sb.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sc.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sd.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_se.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sg.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sh.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_si.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sj.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sk.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sl.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sm.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sn.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_so.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sr.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ss.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_st.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sv.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sx.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sy.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_sz.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tc.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_td.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tf.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tg.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_th.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tj.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tk.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tl.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tm.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tn.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_to.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tr.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tt.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tv.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tw.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_tz.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ua.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ug.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_um.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_us.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_uy.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_uz.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_va.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_vc.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ve.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_vg.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_vi.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_vn.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_vu.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_wf.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ws.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_xk.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_ye.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_yt.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_za.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_zm.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_zw.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/bds_atif.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/bitcoin_nodes.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/bitcoin_nodes_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/bitcoin_nodes_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/bitcoin_nodes_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_apache.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_bots.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_bruteforce.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_ftp.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_imap.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_mail.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_sip.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_ssh.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_de_strongips.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/blocklist_net_ua.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/botscout.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/botscout_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/botscout_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/botscout_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/botvrij_dst.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/botvrij_src.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/bruteforceblocker.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ciarmy.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cidr_report_bogons.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_new.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_new_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_new_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_new_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_top20.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_updated.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_updated_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_updated_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cleantalk_updated_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cta_cryptowall.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/cybercrime.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/darklist_de.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/dm_tor.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/dshield.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/dshield_1d.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/dshield_30d.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/dshield_7d.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/et_block.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/et_compromised.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/et_dshield.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/et_spamhaus.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/et_tor.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/feodo.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/feodo_badips.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_abusers_1d.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_abusers_30d.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_anonymous.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_level1.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_level2.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_level3.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_level4.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_proxies.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_webclient.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_webserver.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/gpf_comics.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/graphiclineweb.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/greensnow.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_abuse_palevo.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_abuse_spyeye.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_abuse_zeus.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_ciarmy_malicious.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_cidr_report_bogons.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_cruzit_web_attacks.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_aol.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_att.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_cablevision.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_charter.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_comcast.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_embarq.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_qwest.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_sprint.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_suddenlink.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_twc.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_isp_verizon.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_malc0de.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_onion_router.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_activision.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_apple.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_blizzard.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_crowd_control.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_electronic_arts.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_joost.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_linden_lab.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_logmein.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_ncsoft.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_nintendo.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_pandora.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_pirate_bay.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_punkbuster.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_riot_games.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_sony_online.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_square_enix.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_steam.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_ubisoft.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_org_xfire.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_pedophiles.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_spamhaus_drop.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/iblocklist_yoyo_adservers.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/myip.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_commenters.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_commenters_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_commenters_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_commenters_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_dictionary.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_dictionary_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_dictionary_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_dictionary_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_harvesters.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_harvesters_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_harvesters_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_harvesters_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_spammers.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_spammers_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_spammers_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/php_spammers_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/sblam.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/set_file_timestamps.sh",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/socks_proxy.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/socks_proxy_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/socks_proxy_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/socks_proxy_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/spamhaus_drop.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/spamhaus_edrop.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/sslproxies.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/sslproxies_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/sslproxies_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/sslproxies_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam_180d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam_365d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam_90d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/stopforumspam_toxic.netset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/tor_exits.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/tor_exits_1d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/tor_exits_30d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/tor_exits_7d.ipset",
-"https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/vxvault.ipset",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/afr.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/anz.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/asa.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/eur.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/nam.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_eur.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_neu.txt",
-"https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/r_seu.txt"
+def process_file(file_url: str, result_queue: queue.Queue) -> None:
+    """处理单个文件并返回处理结果"""
+    try:
+        # 下载文件内容
+        response = requests.get(file_url)
+        response.raise_for_status()
+        lines = response.text.splitlines()
 
-)
-$finalRuleSetFile = "adblock_reject22.json"
-$throttleLimit = [System.Environment]::ProcessorCount
+        processed_lines = []
+        for line in lines:
+            stripped_line = ""  # 初始化默认值，避免未赋值
+            try:
+                if '.' in line or ':' in line or '/' in line:
+                # 分割注释并清理空格（增加异常捕获）
+                    if not isinstance(line, str):  # 防御性检查：确保 line 是字符串
+                        continue
+                stripped_part = line.split('#', 1)[0]  # 分割注释
+                stripped_line = stripped_part.strip()    # 清理首尾空格
+            except (AttributeError, IndexError):
+                # 处理 line 非字符串 或 split 结果异常的情况
+                continue  # 跳过无效行
 
-Write-Host "开始并行下载文件..."
-$downloadedFiles = $urls | ForEach-Object -Parallel {
-    $url = $_
-    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-    try {
-        Invoke-WebRequest -Uri $url -OutFile $tempFile -UseBasicParsing -ErrorAction Stop
-        return $tempFile
+            # 跳过空行和纯注释
+            if not stripped_line:
+                continue
+
+            # 处理 IP 地址/CIDR
+            if '/' in stripped_line:
+                processed_lines.append(stripped_line)
+            else:
+                try:
+                    ip = ipaddress.ip_address(stripped_line)
+                    processed_lines.append(
+                        f"{ip}/{32 if ip.version == 4 else 128}"
+                    )
+                except ValueError:
+                    continue  # 非法 IP 地址直接跳过
+
+        # 将处理结果存入队列
+        result_queue.put(processed_lines)
+
+    except requests.RequestException as e:
+        print(f"处理 {file_url} 时发生网络错误: {str(e)}")
+    except Exception as e:
+        print(f"处理 {file_url} 时出现未知错误: {str(e)}")
+
+
+def main(file_urls: list[str]) -> None:
+    """主函数：多线程处理文件并生成规则集"""
+    result_queue = queue.Queue()
+    threads = []
+
+    # 创建并启动处理线程
+    for url in file_urls:
+        thread = threading.Thread(
+            target=process_file,
+            args=(url, result_queue),
+            name=f"FileProcessor-{url}"
+        )
+        thread.start()
+        threads.append(thread)
+
+    # 等待所有线程完成
+    for thread in threads:
+        thread.join()
+
+    # 合并所有处理结果
+    all_processed_lines = []
+    while not result_queue.empty():
+        all_processed_lines.extend(result_queue.get())
+
+    # 生成最终规则集
+    rule_set = {
+        "version": 1,
+        "rules": [
+            {
+                "ip_cidr": all_processed_lines
+            }
+        ]
     }
-    catch {
-        Write-Warning "下载失败: $url"
-    }
-} -ThrottleLimit $throttleLimit
 
-$downloadedFiles = $downloadedFiles | Where-Object { $_ }
-if ($downloadedFiles.Count -eq 0) {
-    Write-Error "所有文件下载失败，脚本终止。"
-    exit
-}
-Write-Host "文件下载完成。"
+    # 写入 JSON 文件
+    with open('adblock_reject19.json', 'w', encoding='utf-8') as f:
+        json.dump(
+            rule_set,
+            f,
+            indent=4,
+            ensure_ascii=False,
+            separators=(',', ': ')
+        )
 
-Write-Host "开始并行处理文件并聚合 IP..."
-$allIpCidrs = $downloadedFiles | ForEach-Object -Parallel {
-    $filePath = $_
-    #$ipAddress = [System.Net.IPAddress]::None
-    foreach ($line in [System.IO.File]::ReadLines($filePath)) {
-        $line = ($line -split '#')[0].Trim()
-         if ([string]::IsNullOrEmpty($line)){ continue }
-        if ($line -and $line[0] -ne '#') {
-            if ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}\s*$' -and ($line.Trim() -notmatch '^#') -and ($line -notmatch '/')) {
-                    $line = $Matches[0]  + "/" + "32"
-                    $line
-                }
-                # 处理IPv6
-                
-                elseif ($line -match '\s*([0-9a-fA-F:]+)+\s*$'-and ($line.Trim() -notmatch '^#')-and ($line -notmatch '/') ) {
-                    $line = $Matches[0]  + "/" + "128"
-                    $line
-                }
-                # 处理CIDR
-                elseif ($line -match '^\s*([0-9]{1,3}\.){3}[0-9]{1,3}/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
-                    #Write-Host "IPv4cidr: $line"
-                    $line = $Matches[0] 
-                    $line
-                }
-                # 处理CIDR
-                elseif ($line -match '^\s*([0-9a-fA-F:]+)+/\d{1,3}\s*$'-and ($line.Trim() -notmatch '^#')) {
-                
-                    $line = $Matches[0]
-                   $line
-                }
-        }
-    }
-} -ThrottleLimit $throttleLimit
+if __name__ == "__main__":
+    FILE_URLS = [
+            "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset",
+            "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset",
+            "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset",
+        "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset",
+        "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level3.netset",
+    "https://github.com/bitwire-it/ipblocklist/raw/refs/heads/main/ip-list.txt",
+    "https://github.com/TimmiORG/ip-blacklist/raw/refs/heads/main/all.list.use",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_africa.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_antartica.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_asia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_north_america.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_oceania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_south_america.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_afghanistan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_aland_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_albania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_algeria.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_american_samoa.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_andorra.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_angola.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_anguilla.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_antarctica.ipset",
+    "https://raw.githubusercontent.com/sefinek/known-bots-ip-whitelist/main/lists/all-safe-ips.txt",
+    "https://github.com/stamparm/ipsum/raw/refs/heads/master/ipsum.txt",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_africa.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_antartica.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_asia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_europe.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_north_america.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_oceania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/continent_south_america.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_afghanistan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_aland_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_albania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_algeria.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_american_samoa.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_andorra.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_angola.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_anguilla.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_antarctica.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_antigua_barbuda.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_argentina.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_armenia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_aruba.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_australia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_austria.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_azerbaijan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bahamas.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bahrain.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bangladesh.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_barbados.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_belarus.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_belgium.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_belize.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_benin.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bermuda.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bhutan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bolivia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bonaire_sint_eustatius_saba.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bosnia_herzegovina.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_botswana.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bouvet_island.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_brazil.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_british_indian_ocean_territory.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_british_virgin_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_brunei_darussalam.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_bulgaria.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_burkina_faso.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_burundi.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cambodia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cameroon.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_canada.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cape_verde.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cayman_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cc.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_central_african_republic.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_chad.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_chile.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_china.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_christmas_island.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_colombia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_comoros.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_congo.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cook_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_costa_rica.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cote_divoire.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_croatia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cuba.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_curacao.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_cyprus.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_czech_republic.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_democratic_republic_congo.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_denmark.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_djibouti.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_dominica.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_dominican_republic.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_ecuador.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_egypt.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_el_salvador.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_equatorial_guinea.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_eritrea.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_estonia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_eswatini.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_ethiopia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_europe.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_falkland_islands_malvinas.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_faroe_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_fiji.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_finland.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_france.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_french_guiana.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_french_polynesia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_french_southern_territories.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_gabon.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_gambia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_georgia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_germany.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_ghana.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_gibraltar.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_great_britain.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_greece.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_greenland.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_grenada.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_guadeloupe.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_guam.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_guatemala.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_guernsey.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_guinea.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_guineabissau.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_guyana.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_haiti.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_heard_island_and_mcdonald_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_honduras.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_hong_kong.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_hungary.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_iceland.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_india.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_indonesia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_iran.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_iraq.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_ireland.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_isle_of_man.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_israel.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_italy.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_jamaica.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_japan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_jersey.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_jordan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_kazakhstan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_kenya.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_kiribati.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_kosovo.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_kuwait.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_kyrgyzstan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_laos.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_latvia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_lebanon.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_lesotho.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_liberia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_libya.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_liechtenstein.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_lithuania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_luxembourg.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_macao.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_macedonia_republic.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_madagascar.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_malawi.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_malaysia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_maldives.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_mali.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_malta.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_marshall_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_martinique.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_mauritania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_mauritius.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_mayotte.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_mexico.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_micronesia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_monaco.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_mongolia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_montenegro.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_montserrat.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_morocco.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_mozambique.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_myanmar.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_namibia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_nauru.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_nepal.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_netherlands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_new_caledonia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_new_zealand.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_nicaragua.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_niger.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_nigeria.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_niue.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_norfolk_island.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_north_korea.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_northern_mariana_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_norway.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_oman.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_pakistan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_palau.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_palestine.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_panama.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_papua_new_guinea.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_paraguay.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_peru.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_philippines.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_pitcairn.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_poland.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_portugal.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_puerto_rico.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_qatar.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_republic_moldova.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_reunion.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_romania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_russia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_rwanda.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saint_barthelemy.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saint_helena.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saint_kitts_nevis.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saint_lucia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saint_martin_north.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saint_pierre_miquelon.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saint_vincent_grenadines.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_samoa.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_san_marino.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_sao_tome_principe.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_saudi_arabia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_senegal.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_serbia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_seychelles.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_sierra_leone.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_singapore.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_sint_maarten_south.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_slovakia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_slovenia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_solomon_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_somalia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_south_africa.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_south_georgia_and_the_south_sandwich_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_south_korea.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_south_sudan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_spain.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_sri_lanka.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_sudan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_suriname.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_svalbard_jan_mayen.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_sweden.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_switzerland.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_syria.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_taiwan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_tajikistan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_tanzania.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_thailand.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_timorleste.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_togo.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_tokelau.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_tonga.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_trinidad_tobago.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_tunisia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_turkey.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_turkmenistan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_turks_caicos_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_tuvalu.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_uganda.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_ukraine.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_united_arab_emirates.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_united_states.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_united_states_minor_outlying_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_united_states_virgin_islands.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_uruguay.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_uzbekistan.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_vanuatu.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_vatican_city_holy_see.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_venezuela.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_vietnam.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_wallis_futuna.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_western_sahara.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_yemen.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_zambia.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/country/geolite/country_zimbabwe.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_aol.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_att.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_cablevision.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_charter_spectrum_timewarnercable.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_comcast.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_cox_communications.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_embarq.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_frontier_communications.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_qwest.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_spacex_starlink.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_sprint.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_suddenlink_altice_optimum.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/isp/isp_verizon.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_activision.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_ahrefs.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_amazon_aws.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_amazon_ec2.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_applebot.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_bing.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_blizzard.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_bunnycdn.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_cloudflarecdn.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_cloudfront.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_duckduckgo.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_electronicarts_ign.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_facebook.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_fastly.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_general.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_google.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_nintendo.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_pandora.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_pingdom.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_piratebay.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_punkbuster.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_riot_games.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_rssapi.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_sony.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_steam.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_stripe_api.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_stripe_armada_gator.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_stripe_webhooks.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_telegram.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_ubisoft.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_uptimerobot.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_webpagetest.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/privacy/privacy_xfire.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/spam/spam_forums.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/spam/spam_spamhaus.ipset",
+    "https://github.com/Aetherinox/blocklists/raw/refs/heads/main/blocklists/transmission/blocklist.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/highrisk.ipset",
+    "https://raw.githubusercontent.com/Aetherinox/blocklists/refs/heads/main/blocklists/master.ipset",
+    "https://github.com/borestad/blocklist-abuseipdb/raw/refs/heads/main/abuseipdb-s100-all.ipv4",
+    "https://github.com/ashleykleynhans/ipset/raw/refs/heads/main/ipv4.csv",
+    "https://raw.githubusercontent.com/tn3w/IPSet/refs/heads/master/iplist.txt",
+    "https://raw.githubusercontent.com/Sopils/myipset/refs/heads/main/output/sam.txt"
+    ]
 
-Write-Host "文件处理完成，共收集到 $($allIpCidrs.Count) 条有效 IP CIDR。"
-
-Write-Host "正在生成整合的 sing-box rule set 文件..."
-$ruleSet = @{
-    version = 1
-    rules   = @(
-        @{
-            ip_cidr = $allIpCidrs
-        }
-    )
-}
-$ruleSet | ConvertTo-Json -Depth 5 | Set-Content -Path $PSScriptRoot/$finalRuleSetFile -Encoding UTF8 -NoNewline
-Write-Host "Rule set 文件已成功生成：$finalRuleSetFile"
-
-Write-Host "正在清理临时文件..."
-$downloadedFiles | ForEach-Object { Remove-Item $_ -Force }
-
-Write-Host "所有任务完成。"
-
-pause
+    main(FILE_URLS)
