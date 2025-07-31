@@ -17,10 +17,11 @@ def process_file(file_url: str, result_queue: queue.Queue) -> None:
         for line in lines:
             stripped_line = ""  # 初始化默认值，避免未赋值
             try:
-                if '.' in line or ':' in line or '/' in line:
+                if not '.' in line or not ':' in line or not '/' in line:
+                    continue
                 # 分割注释并清理空格（增加异常捕获）
-                    if not isinstance(line, str):  # 防御性检查：确保 line 是字符串
-                        continue
+                if not isinstance(line, str):  # 防御性检查：确保 line 是字符串
+                    continue
                 stripped_part = line.split('#', 1)[0]  # 分割注释
                 stripped_line = stripped_part.strip()    # 清理首尾空格
             except (AttributeError, IndexError):
