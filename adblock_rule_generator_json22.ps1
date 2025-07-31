@@ -15,10 +15,12 @@ def process_file(file_url: str, result_queue: queue.Queue) -> None:
 
         processed_lines = []
         for line in lines:
-            stripped_line = ""  # 初始化默认值，避免未赋值
+            stripped_line = "1"  # 初始化默认值，避免未赋值
             try:
-                if not '.' in line or not ':' in line or not '/' in line:
+                # 新增判断：如果行中不含 . : / 中的任意一个字符，直接跳过
+                if not ('.' in line or ':' in line or '/' in line):
                     continue
+                
                 # 分割注释并清理空格（增加异常捕获）
                 if not isinstance(line, str):  # 防御性检查：确保 line 是字符串
                     continue
@@ -96,7 +98,6 @@ def main(file_urls: list[str]) -> None:
             ensure_ascii=False,
             separators=(',', ': ')
         )
-
 if __name__ == "__main__":
     FILE_URLS = [
             "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset",
