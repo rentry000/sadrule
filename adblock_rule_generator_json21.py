@@ -483,73 +483,91 @@ URLS = [
 
 # 并发处理的线程数
 MAX_WORKERS = 10
-
 # 输出文件名
-OUTPUT_FILENAME = "adblock_reject21.json"
+OUTPUT_FILENAME = "adblock_reject.json"
 
 
-def process_line(line: str) -> str | None:
+def _convert_range_to_cidrs(line: str) -> list[str]:
+    """
+    [辅助函数] 解析 "IP起始-IP结束" 格式的行，不产生控制台输出。
+    如果一行同时包含 ':' 和 '-'，则尝试此解析。
+    """
+    if ':' not in line or '-' not in line:
+        return []
+
+    try:
+        range_part = line.rsplit(':', 1)[1]
+        start_ip_str, end_ip_str = range_part.split('-')
+
+        if '.' not in end_ip_str:
+            base_ip = start_ip_str.rsplit('.', 1)[0]
+            end_ip_str = f"{base_ip}.{end_ip_str}"
+
+        start_ip = ipaddress.ip_address(start_ip_str)
+        end_ip = ipaddress.ip_address(end_ip_str)
+
+        if start_ip > end_ip:
+            return []
+
+        return [str(net) for net in ipaddress.summarize_address_range(start_ip, end_ip)]
+    except (ValueError, IndexError):
+        # 捕获所有可能的解析错误（格式错误、IP无效等）并静默失败
+        return []
+
+
+def process_line(line: str) -> list[str]:
     """
     处理单行文本，进行清洗、验证和格式化。
+    现在可以处理标准 IP/CIDR 和 IP 范围格式。
 
     Args:
         line: 输入的原始行。
 
     Returns:
-        一个符合规范的 IP/CIDR 字符串，或者 None (如果该行无效)。
+        一个包含一个或多个 CIDR 字符串的列表，如果该行无效则返回空列表。
     """
-    # 去掉两端的空白字符
-    cleaned_line = line.split('#', 1)[0].strip() # 分割注释
+    cleaned_line = line.split('#', 1)[0].strip()
 
     # 1. 去掉注释和空行
     if not cleaned_line or cleaned_line.startswith('#'):
-        return None
+        return []
 
-    # 2. 如果没有 . 或 : 或 / 就跳过 (基本的 IP/CIDR 特征)
-    if not any(char in cleaned_line for char in ['.', ':', '/']):
-        return None
-
+    # --- 策略 1: 尝试直接解析为 IP/CIDR ---
     try:
-        # 3. 使用 ipaddress 模块进行解析和标准化
-        #    - strict=False 允许解析裸 IP 地址（如 "1.1.1.1"）
-        #    - ip_network() 会自动识别 IPv4 和 IPv6
-        #    - .with_prefixlen 会返回标准的 CIDR 格式
-        #      - "1.1.1.1" -> "1.1.1.1/32"
-        #      - "2001:db8::1" -> "2001:db8::1/128"
-        #      - "192.168.0.0/24" -> "192.168.0.0/24"
         ip_net = ipaddress.ip_network(cleaned_line, strict=False)
-        return ip_net.with_prefixlen
+        return [ip_net.with_prefixlen]
     except ValueError:
-        # 如果 ipaddress 模块无法解析，则说明不是有效的 IP/CIDR，跳过
-        # print(f"警告: 跳过无效行 -> {cleaned_line}")
-        return None
+        # --- 策略 2: 如果直接解析失败，则尝试作为 IP 范围解析 ---
+        cidrs_from_range = _convert_range_to_cidrs(cleaned_line)
+        if cidrs_from_range:
+            return cidrs_from_range
+
+    # 3. 如果所有策略都失败，则认为该行无效
+    return []
 
 
 def download_and_process_url(url: str) -> set[str]:
     """
     下载单个 URL 的内容，逐行处理，并返回一个包含所有有效 CIDR 的集合。
-
-    Args:
-        url: 要下载的文件的 URL。
-
-    Returns:
-        一个包含此文件所有有效 CIDR 的集合。
     """
     processed_cidrs = set()
     print(f"开始处理: {url}")
     try:
-        # 使用流式传输，防止大文件撑爆内存
         with requests.get(url, stream=True, timeout=60) as r:
-            r.raise_for_status()  # 如果 HTTP 请求返回错误状态码，则抛出异常
-            # 逐行迭代响应内容，decode() 将字节解码为字符串
+            r.raise_for_status()
             for line_bytes in r.iter_lines():
                 line_str = line_bytes.decode('utf-8', errors='ignore')
-                processed = process_line(line_str)
-                if processed:
-                    processed_cidrs.add(processed)
+                
+                # process_line 现在返回一个列表
+                processed_list = process_line(line_str)
+                
+                # 如果列表非空，使用 update 将所有元素添加到集合中
+                if processed_list:
+                    processed_cidrs.update(processed_list)
+
     except requests.RequestException as e:
         print(f"错误: 下载或处理 {url} 时失败: {e}")
-        return set() # 返回空集合表示失败
+        return set()
 
     print(f"处理完成: {url} | 发现 {len(processed_cidrs)} 个有效条目")
     return processed_cidrs
@@ -558,10 +576,6 @@ def download_and_process_url(url: str) -> set[str]:
 def create_singbox_ruleset(cidrs: list[str], output_file: str):
     """
     根据提供的 CIDR 列表生成 sing-box 规则集 JSON 文件。
-
-    Args:
-        cidrs: 包含所有 IP/CIDR 的列表。
-        output_file: 输出的 JSON 文件名。
     """
     print("\n正在生成最终的 sing-box 规则集...")
     rule_set = {
@@ -572,9 +586,7 @@ def create_singbox_ruleset(cidrs: list[str], output_file: str):
             }
         ]
     }
-    # 写入 JSON 文件，ensure_ascii=False 保证了非 ASCII 字符的正确写入
     with open(output_file, 'w', encoding='utf-8') as f:
-        # 使用 indent=2 或 4 可以让输出的 json 文件格式化，更易读
         json.dump(rule_set, f, ensure_ascii=False, indent=2)
     print(f"成功! 规则集已保存到: {output_file}")
 
@@ -584,33 +596,24 @@ def main():
     start_time = time.time()
     all_processed_cidrs = set()
 
-    # 使用线程池并发下载和处理所有 URL
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        # 提交所有任务
         future_to_url = {executor.submit(download_and_process_url, url): url for url in URLS}
-
-        # 当任务完成时，获取结果
         for future in concurrent.futures.as_completed(future_to_url):
             try:
-                # 获取单个文件处理后的 CIDR 集合
                 result_set = future.result()
-                # 使用 update 将结果合并到总集合中，自动去重
                 all_processed_cidrs.update(result_set)
             except Exception as exc:
                 url = future_to_url[future]
                 print(f"错误: URL {url} 的处理线程产生异常: {exc}")
 
-    # 将集合转换为列表并排序，以便输出的 JSON 文件具有一致的顺序
     sorted_cidrs = sorted(list(all_processed_cidrs))
-
     print(f"\n所有文件处理完毕。共找到 {len(sorted_cidrs)} 个唯一的 IP/CIDR 条目。")
 
-    # 生成最终的 JSON 文件
     create_singbox_ruleset(sorted_cidrs, OUTPUT_FILENAME)
-
     end_time = time.time()
     print(f"\n总耗时: {end_time - start_time:.2f} 秒。")
 
 
 if __name__ == "__main__":
     main()
+
