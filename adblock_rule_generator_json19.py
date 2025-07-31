@@ -59,7 +59,7 @@ def main(file_urls):
         all_processed_lines.extend(result_queue.get())
     
     # 写入最终的 rule set 文件
-    with open('integrated_rule_set.txt', 'w') as f:
+    with open('adblock_reject19.json', 'w') as f:
         for line in all_processed_lines:
             f.write(line + '\n')
 
