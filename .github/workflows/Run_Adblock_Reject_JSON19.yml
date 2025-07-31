@@ -1,6 +1,7 @@
-以下是修改后的 GitHub Actions 工作流文件，在安装依赖项步骤中增加了 Python-pip 的安装：
+#以下是修改后的 GitHub Actions 工作流文件，在安装依赖项步骤中增加了 Python-pip 的安装：
 
-name: Run_Adblock_Reject_JSON19  # Workflow name
+name: Run_Adblock_Reject_JSON19  
+# Workflow name
 
 on:
   schedule:
@@ -59,4 +60,3 @@ jobs:
           git push --force origin HEAD && break || (echo "Push failed, retrying in 10 seconds..." && sleep 10)
         done
 
-pause
