@@ -352,7 +352,7 @@ URLS = [
 # 并发处理的线程数
 MAX_WORKERS = 10
 # 输出文件名
-OUTPUT_FILENAME = "adblock_reject.json"
+OUTPUT_FILENAME = "adblock_reject19.json"
 
 
 def _convert_range_to_cidrs(line: str) -> list[str]:
