@@ -15,8 +15,9 @@ def process_file(file_url: str, result_queue: queue.Queue) -> None:
 
         processed_lines = []
         for line in lines:
+            if '.' in line or ':' in line or '/' in line:
             # 分割注释并清理空格
-            stripped_line = line.split('#', 1)[0].strip()
+                stripped_line = line.split('#',1)[0].strip()
             
             # 跳过空行和纯注释
             if not stripped_line:
