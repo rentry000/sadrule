@@ -3616,7 +3616,7 @@ def process_line(line: str) -> list[str]:
     Returns:
         一个包含一个或多个 CIDR 字符串的列表，如果该行无效则返回空列表。
     """
-    cleaned_line = re.split(r'[#,]', line, maxsplit=1)[0].strip()
+    cleaned_line = line.split(r'[#,]', line, maxsplit=1)[0].strip()
 
 
     # 1. 去掉注释和空行
