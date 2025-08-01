@@ -3,6 +3,7 @@ import json
 import ipaddress
 import concurrent.futures
 import time
+import re
 
 # --- 配置 ---
 # 在这里添加您需要下载的远程规则文件 URL 列表
@@ -3616,9 +3617,7 @@ def process_line(line: str) -> list[str]:
     Returns:
         一个包含一个或多个 CIDR 字符串的列表，如果该行无效则返回空列表。
     """
-    cleaned_line = line.split(r'[#,]',1)[0].strip()
-
-
+    cleaned_line = re.split(r'[#,]', line, maxsplit=1)[0].strip()
     # 1. 去掉注释和空行
     if not cleaned_line or cleaned_line.startswith('#'):
         return []
