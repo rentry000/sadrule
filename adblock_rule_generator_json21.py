@@ -3,6 +3,7 @@ import json
 import ipaddress
 import concurrent.futures
 import time
+import re
 
 # --- 配置 ---
 # 在这里添加您需要下载的远程规则文件 URL 列表
@@ -485,7 +486,17 @@ URLS = [
 MAX_WORKERS = 10
 # 输出文件名
 OUTPUT_FILENAME = "adblock_reject21.json"
-
+def extract_ip_address(line):
+    """
+    从MikroTik格式的字符串中提取IP地址
+    支持格式：
+    - add list=blacklist address=64.62.156.0/24 comment=Auto_address_List
+    - add list=hole-blacklist address=0.6.0.7
+    """
+    # 匹配IPv4地址（带或不带掩码）
+    ip_pattern = r'address=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?:/\d{1,2})?)'
+    match = re.search(ip_pattern, line)
+    return match.group(1) if match else None
 
 def _convert_range_to_cidrs(line: str) -> list[str]:
     """
@@ -517,8 +528,12 @@ def _convert_range_to_cidrs(line: str) -> list[str]:
 
 def process_line(line: str) -> list[str]:
     """
-    处理单行文本，进行清洗、验证和格式化。
-    现在可以处理标准 IP/CIDR 和 IP 范围格式。
+    处理单行文本，进行清洗、验证和格式化，支持五种格式：
+    1. 单个IP地址 (如 "192.168.1.1")
+    2. CIDR格式 (如 "192.168.1.0/24")
+    3. 复杂配置行 (如 "add list=blacklist address=64.62.156.0/24 comment=Auto_address_List")
+    4. 逗号分隔格式 (如 "AD,213.236.8.0,21,ipv4")
+    5. 新的键值对格式 (如 'add=2001:c60:0:0:0:0:0:0/27 comment="China20250802" list=dst-use-no-vpn')
 
     Args:
         line: 输入的原始行。
@@ -526,24 +541,93 @@ def process_line(line: str) -> list[str]:
     Returns:
         一个包含一个或多个 CIDR 字符串的列表，如果该行无效则返回空列表。
     """
-    cleaned_line = line.split('#', 1)[0].strip()
-
-    # 1. 去掉注释和空行
+    # 初始清理 - 移除注释和空白
+    cleaned_line = re.split(r'[#}]', line)[0].strip()
     if not cleaned_line or cleaned_line.startswith('#'):
         return []
+    
+    # 尝试匹配多种键值对格式
+    key_value_match = re.search(
+        r'(address|ip|add)\s*[=:]\s*([^\s,]+)', 
+        cleaned_line
+    )
+    if key_value_match:
+        return _process_ip_part(key_value_match.group(2))
+    
+    # 尝试匹配逗号分隔格式 (如 "AD,213.236.8.0,21,ipv4")
+    comma_parts = [part.strip() for part in cleaned_line.split(',')]
+    if len(comma_parts) >= 3 and comma_parts[-1].lower() in ['ipv4', 'ipv6']:
+        ip_part = comma_parts[1]  # 位置1是IP地址
+        prefix_part = comma_parts[2]  # 位置2是前缀长度
+        
+        # 验证IP地址部分
+        try:
+            ip_address = ipaddress.ip_address(ip_part)
+        except ValueError:
+            return []
+        
+        # 验证前缀长度
+        try:
+            prefix_len = int(prefix_part)
+            if ip_address.version == 4 and (prefix_len < 0 or prefix_len > 32):
+                return []
+            if ip_address.version == 6 and (prefix_len < 0 or prefix_len > 128):
+                return []
+                
+            return [f"{ip_address}/{prefix_len}"]
+        except ValueError:
+            return []
+    
+    # 尝试直接处理IP部分 (包含单个IP、CIDR或IP范围)
+    return _process_ip_part(cleaned_line)
 
-    # --- 策略 1: 尝试直接解析为 IP/CIDR ---
+def _process_ip_part(ip_part: str) -> list[str]:
+    """处理IP部分 (单个IP、CIDR或范围)"""
+    # 尝试直接解析为 IP/CIDR
     try:
-        ip_net = ipaddress.ip_network(cleaned_line, strict=False)
+        ip_net = ipaddress.ip_network(ip_part, strict=False)
         return [ip_net.with_prefixlen]
     except ValueError:
-        # --- 策略 2: 如果直接解析失败，则尝试作为 IP 范围解析 ---
-        cidrs_from_range = _convert_range_to_cidrs(cleaned_line)
-        if cidrs_from_range:
-            return cidrs_from_range
-
-    # 3. 如果所有策略都失败，则认为该行无效
+        pass
+    
+    # 尝试作为IP范围解析
+    cidrs = _convert_range_to_cidrs(ip_part)
+    if cidrs:
+        return cidrs
+    
+    # 尝试作为单个IP地址 (自动转换为/32或/128 CIDR)
+    try:
+        ip_addr = ipaddress.ip_address(ip_part)
+        return [f"{ip_addr}/{ip_addr.max_prefixlen}"]
+    except ValueError:
+        pass
+    
+    # 所有尝试都失败
     return []
+
+def _convert_range_to_cidrs(ip_range: str) -> list[str]:
+    """将IP范围字符串转换为CIDR列表"""
+    if '-' not in ip_range:
+        return []
+    
+    parts = [p.strip() for p in ip_range.split('-', 1)]
+    if len(parts) < 2:
+        return []
+    
+    try:
+        start_ip = ipaddress.ip_address(parts[0])
+        end_ip = ipaddress.ip_address(parts[1])
+        
+        # 确保IP版本一致
+        if start_ip.version != end_ip.version:
+            return []
+        
+        # 生成CIDR列表
+        cidrs = list(ipaddress.summarize_address_range(start_ip, end_ip))
+        return [str(cidr) for cidr in cidrs]
+    
+    except ValueError:
+        return []
 
 
 def download_and_process_url(url: str) -> set[str]:
