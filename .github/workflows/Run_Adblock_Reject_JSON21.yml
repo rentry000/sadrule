@@ -1,6 +1,6 @@
 #以下是修改后的 GitHub Actions 工作流文件，在安装依赖项步骤中增加了 Python-pip 的安装：
 
-name: Run_Adblock_Reject_JSON21  
+name: Run_Adblock_Reject_JSON21
 # Workflow name
 
 on:
@@ -18,7 +18,7 @@ jobs:
       with:
         node-version: '20'  # 指定 Node.js 版本 20
 
-    - name: Setup Python 3.12  # 设置 Python 3.9 环境
+    - name: Setup Python 3.12.11  # 设置 Python 3.9 环境
       uses: actions/setup-python@v4
       with:
         python-version: '3.12.11'  # 指定 Python 版本 3.9
