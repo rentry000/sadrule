@@ -36,7 +36,7 @@ jobs:
     - name: Track .srs Files with Git LFS  # 配置 LFS 跟踪规则（关键！）
       run: |
         # 跟踪所有 .srs 文件（可根据需求调整，如仅跟踪 adblock_reject24.srs）
-        git lfs track "*.srs"
+        git lfs track "*.json"
         # 将 LFS 配置写入 .gitattributes（必须提交到仓库）
         git add .gitattributes
     # ---------------------------------------------------------------------------
