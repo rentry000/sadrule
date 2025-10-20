@@ -5,7 +5,7 @@ name: Run_Adblock_Reject_JSON21
 
 on:
   schedule:
-    - cron: '* * 2 * *'  # 每20分钟运行一次
+    - cron: '* * 9 * *'  # 每20分钟运行一次
   workflow_dispatch:  # 允许手动触发
 
 jobs:
