@@ -1,62 +1,78 @@
-#以下是修改后的 GitHub Actions 工作流文件，在安装依赖项步骤中增加了 Python-pip 的安装：
-
 name: Run_Adblock_Reject_JSON24
-# Workflow name
 
 on:
   schedule:
-    - cron: '* * 2 * *'  # 每20分钟运行一次
+    - cron: '* * 9 * *'  # 每20分钟运行一次（注意：cron 表达式格式为 分 时 日 月 周，此处实际是每小时的 2 分钟运行）
   workflow_dispatch:  # 允许手动触发
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # 使用最新的 Ubuntu 版本作为运行器
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Setup Node.js 20  # 设置 Node.js 20 环境
+    # -------------------------- 原有步骤保持不变 --------------------------
+    - name: Setup Node.js 20
       uses: actions/setup-node@v3
       with:
-        node-version: '20'  # 指定 Node.js 版本 20
+        node-version: '20'
 
-    - name: Setup Python 3.12.11  # 设置 Python 3.9 环境
+    - name: Setup Python 3.12.11
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12.11'  # 指定 Python 版本 3.9
+        python-version: '3.12.11'
 
-    - name: Checkout repository  # 检出代码仓库
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Install dependencies and sing-box  # 安装依赖项和 sing-box
+    # -------------------------- 新增：Git LFS 集成步骤 --------------------------
+    - name: Install Git LFS  # 安装 Git LFS（Ubuntu 镜像默认未安装）
       run: |
-        sudo apt-get update  # 更新软件包列表
-        sudo apt-get install -y wget apt-transport-https software-properties-common  # 安装必要工具
+        sudo apt-get update -y
+        sudo apt-get install -y git-lfs
+
+    - name: Initialize Git LFS  # 初始化 LFS 客户端
+      run: git lfs install
+
+    - name: Track .srs Files with Git LFS  # 配置 LFS 跟踪规则（关键！）
+      run: |
+        # 跟踪所有 .srs 文件（可根据需求调整，如仅跟踪 adblock_reject24.srs）
+        git lfs track "*.srs"
+        # 将 LFS 配置写入 .gitattributes（必须提交到仓库）
+        git add .gitattributes
+    # ---------------------------------------------------------------------------
+
+    - name: Install dependencies and sing-box
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget apt-transport-https software-properties-common
         wget https://github.com/SagerNet/sing-box/releases/download/v1.11.15/sing-box-1.11.15-linux-amd64.tar.gz
         tar -zxvf sing-box-1.11.15-linux-amd64.tar.gz
         sudo apt install -y bash
-        sudo apt install -y python3-pip  # 显式安装 Python3-pip
-        pip3 install --upgrade pip  # 升级 pip 到最新版本
-        pip3 install requests  # 使用 pip3 安装依赖库
-        rm sing-box-1.11.15-linux-amd64.tar.gz  # 清理下载文件
+        sudo apt install -y python3-pip
+        pip3 install --upgrade pip
+        pip3 install requests
+        rm sing-box-1.11.15-linux-amd64.tar.gz
 
-    - name: Run adblock_rule_generator_json24.py  # 运行 Python 脚本
-      run: python3 adblock_rule_generator_json24.py  # 显式使用 Python3 执行脚本
+    - name: Run adblock_rule_generator_json24.py
+      run: python3 adblock_rule_generator_json24.py
 
-    - name: Convert rule-set  # 转换规则集
+    - name: Convert rule-set
       shell: bash
       run: sing-box-1.11.15-linux-amd64/sing-box rule-set compile --output adblock_reject24.srs adblock_reject24.json
 
-    - name: Force Add and Commit adblock_rule_generator_json24.srs  # 强制添加并提交文件
+    - name: Force Add and Commit Files
       run: |
-        git config --global user.name 'github-actions'  # 配置 Git 用户名
-        git config --global user.email 'github-actions@github.com'  # 配置 Git 邮箱
-        git add -f adblock_reject24.json  # 强制添加文件
-        git add -f adblock_reject24.srs  # 强制添加文件
-        git commit -m 'Update adblock_reject24.srs' 
+        git config --global user.name 'github-actions'
+        git config --global user.email 'github-actions@github.com'
+        # 若 LFS 跟踪生效，无需 -f；保留以防缓存问题
+        git add -f adblock_reject24.json
+        git add -f adblock_reject24.srs  # LFS 会自动处理大文件
+        git commit -m 'Update adblock_reject24.srs' || git commit --allow-empty -m 'Empty commit'
 
-    - name: Retry Push SRS file  # 重试推送文件
+    - name: Retry Push Changes
       env:
-        TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 使用 GitHub 密钥进行身份验证
+        TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        for i in {1..5}; do  # 最多重试5次
+        for i in {1..5}; do
           git push --force origin HEAD && break || (echo "Push failed, retrying in 10 seconds..." && sleep 10)
         done
