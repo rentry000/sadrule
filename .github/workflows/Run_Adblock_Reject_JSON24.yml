@@ -51,7 +51,7 @@ jobs:
         git config --global user.email 'github-actions@github.com'  # 配置 Git 邮箱
         git add -f adblock_reject24.json  # 强制添加文件
         git add -f adblock_reject24.srs  # 强制添加文件
-        git commit -m 'Update adblock_reject24.srs' || true  # 提交变更（允许空提交）
+        git commit -m 'Update adblock_reject24.srs' 
 
     - name: Retry Push SRS file  # 重试推送文件
       env:
