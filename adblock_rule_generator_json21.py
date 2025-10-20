@@ -7,14 +7,9 @@ import re
 
 # --- 配置 ---
 # 在这里添加您需要下载的远程规则文件 URL 列表
-# 例如：
-# URLS = [
-#     "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset",
-#     "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset",
-#     "https://some/other/large_list.txt"
-# ]
+# 例如，可以混合包含不同格式列表的源
 URLS = [
-  "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sk.netset",
+   "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sk.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sl.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sm.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ip2location_country/ip2location_country_sn.netset",
@@ -480,6 +475,7 @@ URLS = [
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mu.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mv.netset",
 "https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/ipip_country/ipip_country_mw.netset"
+
 ]
 
 # 并发处理的线程数
@@ -700,4 +696,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
