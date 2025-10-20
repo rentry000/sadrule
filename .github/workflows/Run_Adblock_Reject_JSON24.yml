@@ -49,6 +49,7 @@ jobs:
       run: |
         git config --global user.name 'github-actions'  # 配置 Git 用户名
         git config --global user.email 'github-actions@github.com'  # 配置 Git 邮箱
+        git add -f adblock_reject24.json  # 强制添加文件
         git add -f adblock_reject24.srs  # 强制添加文件
         git commit -m 'Update adblock_reject24.srs' || true  # 提交变更（允许空提交）
 
