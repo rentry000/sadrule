@@ -1,8 +1,8 @@
-name: Run_Adblock_Reject_JSON19 # 工作流名称
+name: Run_Adblock_Reject_JSON26 # 工作流名称
 
 on:
   schedule:
-    - cron: '* * 2 * *'  # 每20分钟运行一次
+    - cron: '* * 9 * *'  # 每20分钟运行一次
   workflow_dispatch:  # 允许手动触发工作流
 
 jobs:
@@ -39,14 +39,14 @@ jobs:
       # 步骤3：转换规则集（依赖于 sing-box.exe）
     - name: convert
       shell: bash
-      run: sing-box-1.11.15-linux-amd64/sing-box rule-set compile --output adblock_reject19.srs adblock_reject19.json
+      run: sing-box-1.11.15-linux-amd64/sing-box rule-set compile --output adblock_reject26.srs adblock_reject26.json
       
     - name: Force Add and Commit JSON file  # 强制添加并提交 adblock_reject.json 文件
       run: |
         git config --global user.name 'github-actions'  # 配置提交用户名
         git config --global user.email 'github-actions@github.com'  # 配置提交邮箱
-        git add -f adblock_reject19.srs  # 强制添加 adblock_reject.json 文件
-        git commit -m 'Update adblock_reject19.srs' || git commit --allow-empty -m 'Empty commit to force push'  # 提交更改，若无更改则提交空更改
+        git add -f adblock_reject26.srs  # 强制添加 adblock_reject.json 文件
+        git commit -m 'Update adblock_reject26.srs' || git commit --allow-empty -m 'Empty commit to force push'  # 提交更改，若无更改则提交空更改
 
     - name: Retry Push JSON file  # 推送 adblock_reject.json 文件，失败时重试
       env:
