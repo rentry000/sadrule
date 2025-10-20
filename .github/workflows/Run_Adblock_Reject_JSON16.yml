@@ -18,6 +18,23 @@ jobs:
     - name: Checkout repository  # 检出代码仓库
       uses: actions/checkout@v3  # 使用官方的 checkout 操作来检出代码
 
+    # -------------------------- 新增：Git LFS 集成步骤 --------------------------
+    - name: Install Git LFS  # 安装 Git LFS（Ubuntu 镜像默认未安装）
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y git-lfs
+
+    - name: Initialize Git LFS  # 初始化 Git LFS 客户端
+      run: git lfs install
+
+    - name: Track Large Files with Git LFS  # 配置 LFS 跟踪规则（根据需求调整文件匹配符）
+      run: |
+        # 跟踪所有 .srs 文件（若只需跟踪特定文件，可替换为 "adblock_reject16.srs"）
+        git lfs track "*.srs"
+        # 将 LFS 跟踪配置（.gitattributes）添加到暂存区
+        git add .gitattributes
+    # ---------------------------------------------------------------------------
+
     - name: Install PowerShell 7  # 安装 PowerShell 7
       run: |
         sudo apt-get update  # 更新包列表
@@ -34,24 +51,22 @@ jobs:
     - name: Run adblock_rule_generator_json16.ps1   # 运行 adblock_rule_generator_json.ps1 脚本
       run: pwsh -File ./adblock_rule_generator_json16.ps1  # 使用 PowerShell 7 运行脚本
 
-
-
-      # 步骤3：转换规则集（依赖于 sing-box.exe）
-    - name: convert
+    - name: convert  # 转换规则集为 .srs 格式（依赖 sing-box）
       shell: bash
       run: sing-box-1.11.15-linux-amd64/sing-box rule-set compile --output adblock_reject16.srs adblock_reject16.json
       
-    - name: Force Add and Commit JSON file  # 强制添加并提交 adblock_reject.json 文件
+    - name: Force Add and Commit JSON file  # 强制添加并提交 .srs 文件
       run: |
         git config --global user.name 'github-actions'  # 配置提交用户名
         git config --global user.email 'github-actions@github.com'  # 配置提交邮箱
-        git add -f adblock_reject16.srs  # 强制添加 adblock_reject.json 文件
-        git commit -m 'Update adblock_reject16.srs' || git commit --allow-empty -m 'Empty commit to force push'  # 提交更改，若无更改则提交空更改
+        # 若 LFS 跟踪生效，通常无需 -f；保留以防文件已被缓存
+        git add -f adblock_reject16.srs  
+        git commit -m 'Update adblock_reject16.srs' || git commit --allow-empty -m 'Empty commit to force push'
 
-    - name: Retry Push JSON file  # 推送 adblock_reject.json 文件，失败时重试
+    - name: Retry Push JSON file  # 推送更改（含 LFS 对象）
       env:
         TOKEN: ${{ secrets.TOKEN }}  # 使用 GitHub 密钥进行身份验证
       run: |
-        for i in {1..5}; do  # 尝试最多5次
+        for i in {1..5}; do  # 最多重试5次
           git push --force origin HEAD && exit 0 || (echo "Push failed, retrying in 10 seconds..." && sleep 10)
         done
