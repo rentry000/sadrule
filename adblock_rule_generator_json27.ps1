@@ -140,7 +140,13 @@ $urlList = @(
 "https://tspprs.com/dl/porn",
 "https://tspprs.com/dl/fraud",
 "https://tspprs.com/dl/drugs",
-"https://dbl.oisd.nl"
+"https://dbl.oisd.nl",
+"https://raw.githubusercontent.com/XionKzn/PiHole-Lists/master/PiHole/HOSTS",
+"https://raw.githubusercontent.com/XionKzn/PiHole-Lists/refs/heads/master/PiHole/My_Blocked_Domains.txt",
+"https://raw.githubusercontent.com/XionKzn/PiHole-Lists/refs/heads/master/PiHole/Archive/OpenDNS_Block_list.txt",
+"https://raw.githubusercontent.com/XionKzn/PiHole-Lists/refs/heads/master/PiHole/Archive/Quad9.txt",
+"https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.txt",
+"https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt"
 )
 
 # 日志文件路径
