@@ -1024,7 +1024,36 @@ URLS = [
 "https://raw.githubusercontent.com/sinnoken/routeros-rsc/refs/heads/main/rsc/ipsum-Level6.rsc",
 "https://raw.githubusercontent.com/sinnoken/routeros-rsc/refs/heads/main/rsc/ipsum-Level7.rsc",
 "https://raw.githubusercontent.com/sinnoken/routeros-rsc/refs/heads/main/rsc/ipsum-Level8.rsc",
-"https://raw.githubusercontent.com/Serp07/updater_list_for_mikrotik/refs/heads/main/combined.rsc"
+"https://raw.githubusercontent.com/Serp07/updater_list_for_mikrotik/refs/heads/main/combined.rsc",
+"https://github.com/duggytuxy/Data-Shield_IPv4_Blocklist/raw/refs/heads/main/prod_aa_data-shield_ipv4_blocklist.txt",
+"https://github.com/duggytuxy/Data-Shield_IPv4_Blocklist/raw/refs/heads/main/prod_ab_data-shield_ipv4_blocklist.txt",
+"https://github.com/duggytuxy/Data-Shield_IPv4_Blocklist/raw/refs/heads/main/prod_ac_data-shield_ipv4_blocklist.txt",
+"https://github.com/duggytuxy/Data-Shield_IPv4_Blocklist/raw/refs/heads/main/prod_ad_data-shield_ipv4_blocklist.txt",
+"https://github.com/duggytuxy/Data-Shield_IPv4_Blocklist/raw/refs/heads/main/prod_daily_data-shield_ipv4_blocklist.txt",
+"https://github.com/duggytuxy/Data-Shield_IPv4_Blocklist/raw/refs/heads/main/prod_data-shield_ipv4_blocklist.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/AdBlocking/adblock.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Annoyances_list/annoyances.txt"
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/AntiSocials/asocial.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/common_lists/AI_blocker.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/common_lists/Exceptions.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/common_lists/Google_blocker.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/common_lists/Meta_blocker.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/common_lists/Microsoft_blocker.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/common_lists/Smartphone_tracking.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/Max_privacy.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Experimental/Overall_blocker.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Malvertising_Blocklist/malvertising_blocklist.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Tracking_blocklist/full_anti_track.txt",
+"https://github.com/Melting-Core-Studios/Blocklists/raw/refs/heads/main/Web_Failsafe/common_lists/web_failsafe.txt",
+"https://github.com/eugenescodes/ema-ua-blocklist/raw/refs/heads/main/hosts_ema.txt",
+"https://github.com/miljodir/dns-blocklists/raw/refs/heads/main/pro.mini-onlydomains.txt",
+"https://github.com/miljodir/dns-blocklists/raw/refs/heads/main/tif.mini-onlydomains.txt",
+"https://github.com/miljodir/dns-blocklists/raw/refs/heads/main/tif.onlydomains.txt",
+"https://github.com/aula44/blocklists/raw/refs/heads/main/juegos.txt",
+"https://github.com/aula44/blocklists/raw/refs/heads/main/redes.txt",
+"https://github.com/jarelllama/Parked-Domains/raw/refs/heads/main/parked_domains.txt",
+"https://github.com/jarelllama/Parked-Domains/raw/refs/heads/main/unparked_domains.txt",
+"https://github.com/dragoinformatica/dpt-blocklists/raw/refs/heads/main/dnslist.dns"
 
 ]
 
